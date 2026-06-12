@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"/>
-<title>Red R&T - Monitoreo Offline (Movil)</title>
+<title>Panel RRT - Estaciones</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <style>
@@ -524,48 +524,10 @@ html, body { height:100%; width:100%; overflow:hidden; position:fixed; top:0; le
 /* Ocultar vistas de escritorio en movil */
 #tbl-v, #cable-v, #users-v { display:none !important; }
 
-/* Panel de datos offline (en el cajon) */
-.off-panel { padding:12px; border-bottom:1px solid var(--line); display:flex; flex-direction:column; gap:8px; }
-.off-title { font-family:var(--mono); font-size:11px; color:var(--t1); letter-spacing:1px; }
-.off-meta { font-size:11px; color:var(--t2); line-height:1.7; background:var(--bg0); padding:8px 10px; border-radius:6px; border:1px solid var(--line); word-break:break-word; }
-.off-btn { padding:11px; border-radius:8px; font-weight:600; font-size:13px; cursor:pointer; border:1px solid; text-align:center; }
-.off-btn.est { background:rgba(79,142,247,.14); border-color:var(--acc); color:var(--acc); }
-.off-btn.cable { background:rgba(155,89,182,.14); border-color:var(--pur); color:var(--pur); }
-.off-btn.dl { background:rgba(46,204,113,.14); border-color:var(--grn); color:var(--grn); }
-.off-status { font-size:11px; line-height:1.5; display:none; }
-
-/* Boton de icono Importar en la barra */
-#btn-import { display:flex; align-items:center; justify-content:center; width:42px; height:42px;
-  font-size:18px; border-radius:10px; flex-shrink:0; padding:0;
-  background:rgba(79,142,247,.14); border:1px solid var(--acc); color:var(--acc); cursor:pointer; }
-
-/* Hoja inferior de Importar (bottom sheet) */
-#off-bd { position:fixed; inset:0; z-index:1640; background:rgba(0,0,0,.5); display:none; }
-#off-bd.on { display:block; }
-#off-sheet { position:fixed; left:0; right:0; bottom:0; top:auto; width:100%;
-  max-height:78vh; z-index:1660; transform:translateY(110%); transition:transform .28s ease;
-  overflow-y:auto; -webkit-overflow-scrolling:touch; border-radius:18px 18px 0 0;
-  box-shadow:0 -4px 26px rgba(0,0,0,.55); background:var(--bg1); }
-#off-sheet.on { transform:translateY(0); }
-.off-sheet-h { position:sticky; top:0; z-index:2; display:flex; align-items:center; gap:8px;
-  padding:14px 16px; border-bottom:1px solid var(--line); background:var(--bg1); }
-.off-sheet-title { font-weight:700; font-size:15px; color:var(--t0); }
-.off-sheet-close { margin-left:auto; width:34px; height:34px; border-radius:8px; cursor:pointer;
-  background:transparent; border:1px solid var(--line2); color:var(--t1); font-size:15px; flex-shrink:0; }
-.off-sheet-body { padding:16px; display:flex; flex-direction:column; gap:10px; }
-.off-meta { font-size:12px; color:var(--t2); line-height:1.7; background:var(--bg0); padding:10px 12px; border-radius:8px; border:1px solid var(--line); word-break:break-word; }
-.off-btn { padding:13px; border-radius:10px; font-weight:600; font-size:14px; cursor:pointer; border:1px solid; text-align:center; }
-.off-btn.est { background:rgba(79,142,247,.14); border-color:var(--acc); color:var(--acc); }
-.off-btn.cable { background:rgba(155,89,182,.14); border-color:var(--pur); color:var(--pur); }
-.off-btn.dl { background:rgba(46,204,113,.14); border-color:var(--grn); color:var(--grn); margin-top:4px; }
-.off-status { font-size:12px; line-height:1.5; display:none; }
-
-/* Indicador de red (online/offline) */
-.net-badge { font-family:var(--mono); font-size:11px; padding:5px 10px; border-radius:20px;
-  white-space:nowrap; border:1px solid var(--line2); color:var(--t2); background:var(--bg1); flex-shrink:0; }
-.net-badge.on { color:var(--grn); border-color:var(--grn); }
-.net-badge.off { color:var(--t2); border-color:var(--line2); }
-.off-btn.net { background:rgba(46,204,113,.16); border-color:var(--grn); color:var(--grn); }
+/* Bloque destacado: ultima actualizacion en la ficha */
+.ult-act { background:rgba(79,142,247,.10); border:1px solid var(--acc); border-radius:8px; padding:10px 12px; margin-bottom:12px; }
+.ult-act-h { font-family:var(--mono); font-size:11px; font-weight:700; color:var(--acc); letter-spacing:.5px; margin-bottom:6px; }
+.ult-act-t { font-size:13px; color:var(--t0); line-height:1.5; white-space:pre-wrap; }
 </style>
 </head>
 <body>
@@ -875,28 +837,11 @@ html, body { height:100%; width:100%; overflow:hidden; position:fixed; top:0; le
       <div class="fg" id="fg"></div>
     </div>
 
-  <div id="off-bd" onclick="closeOffSheet()"></div>
-  <div id="off-sheet">
-    <div class="off-sheet-h">
-      <div class="off-sheet-title">&#128194; Importar datos</div>
-      <button class="off-sheet-close" onclick="closeOffSheet()">&#x2715;</button>
-    </div>
-    <div class="off-sheet-body">
-      <div id="off-meta" class="off-meta">Cargando...</div>
-      <input type="file" id="off-est-file" accept=".csv,text/csv" style="display:none" onchange="offEstFile(this.files[0]); this.value='';">
-      <input type="file" id="off-cable-file" accept=".csv,text/csv" style="display:none" onchange="offCableFile(this.files[0]); this.value='';">
-      <button class="off-btn net" onclick="cargarDesdeGitHub(true)">&#8635; Actualizar en linea (GitHub)</button>
-      <button class="off-btn est" onclick="document.getElementById('off-est-file').click()">&#128194; Cargar Estaciones (CSV)</button>
-      <button class="off-btn cable" onclick="document.getElementById('off-cable-file').click()">&#128194; Cargar Cableros (CSV)</button>
-      <button class="off-btn dl" onclick="offDownload()">&#8615; Descargar ultima version</button>
-      <div id="off-status" class="off-status"></div>
-    </div>
-  </div>
   <div id="main">
     <div id="topbar">
       <button id="tog" onclick="toggleSB()">&#9776;</button>
-      <button id="btn-import" onclick="openOffSheet()" title="Importar / descargar datos">&#128194;</button>
-      <div id="net-badge" class="net-badge">⏳ --</div>
+      <button id="btn-refresh" class="refresh-btn visor-only" onclick="refreshFromServer(true)" title="Actualizar datos desde el servidor">&#8635; Actualizar</button>
+      <div id="lite-updated" class="lite-updated visor-only">&#128338; --</div>
       <div class="topright">
         <div class="vtabs">
           <button class="vt about-btn" id="t-about" onclick="openAbout()" title="Acerca de esta plataforma">&#9432; Acerca de</button>
@@ -1003,137 +948,6 @@ html, body { height:100%; width:100%; overflow:hidden; position:fixed; top:0; le
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-// ═══════════════════════════════════════════════════════════
-//  LECTURA EN LINEA (GitHub) - version movil
-//  Si hay internet, baja el JSON publicado; si no, usa lo guardado.
-// ═══════════════════════════════════════════════════════════
-var GITHUB_DATA_URL='https://malvaradob-bethel.github.io/estaciones/publico.json';
-
-function offSetNet(estado, fecha){
-  // estado: 'online' | 'offline' | 'cargando'
-  var el=document.getElementById('net-badge'); if(!el) return;
-  if(estado==='online'){
-    el.innerHTML='\uD83D\uDFE2 En linea'+(fecha?(' \u00B7 '+fecha):'');
-    el.className='net-badge on';
-  } else if(estado==='offline'){
-    el.innerHTML='\u26AB Sin conexion';
-    el.className='net-badge off';
-  } else {
-    el.innerHTML='\u23F3 Conectando...';
-    el.className='net-badge';
-  }
-}
-
-function cargarDesdeGitHub(manual){
-  offSetNet('cargando');
-  if(manual) offStatus('Buscando datos en linea...');
-  fetch(GITHUB_DATA_URL, {cache:'no-store'})
-    .then(function(r){ if(!r.ok) throw new Error('http '+r.status); return r.json(); })
-    .then(function(doc){
-      if(doc && Array.isArray(doc.estaciones)){ ALL=doc.estaciones; saveDB(); }
-      if(doc && Array.isArray(doc.cableros)){ CABLE=doc.cableros; saveCable(); }
-      var fecha=(doc && doc.generado) ? String(doc.generado).substring(0,10) : null;
-      var meta=offGetMeta();
-      meta.online={ fecha:fecha, bajadoEl:new Date().toISOString() };
-      try{ localStorage.setItem('rrt_offline_meta', JSON.stringify(meta)); }catch(e){}
-      try{ updateStats(); applyF(); fillCablePaises(); renderCable(); }catch(e){}
-      offRenderMeta(); offSetNet('online', fecha);
-      if(manual) offStatus('\u2713 Datos en linea actualizados'+(fecha?(' ('+fecha+')'):'')+'.', false);
-    })
-    .catch(function(){
-      offSetNet('offline');
-      if(manual) offStatus('\u26A0 Sin conexion. Se muestran los ultimos datos guardados. Puedes cargar un CSV manualmente.', true);
-    });
-}
-
-
-function openOffSheet(){
-  offRenderMeta();
-  var bd=document.getElementById('off-bd'); if(bd) bd.classList.add('on');
-  var sh=document.getElementById('off-sheet'); if(sh) sh.classList.add('on');
-}
-function closeOffSheet(){
-  var bd=document.getElementById('off-bd'); if(bd) bd.classList.remove('on');
-  var sh=document.getElementById('off-sheet'); if(sh) sh.classList.remove('on');
-}
-
-
-// ═══════════════════════════════════════════════════════════
-//  MODO OFFLINE: carga de CSV locales (estaciones + cableros)
-//  Recuerda lo ultimo cargado y muestra nombre/fecha del archivo.
-// ═══════════════════════════════════════════════════════════
-var OFFLINE_DRIVE_URL='https://drive.google.com/drive/folders/1WqDkIuwCdxqXx82fsLqUWC0G2dYxPPc-?usp=sharing';
-
-function offStatus(msg, isErr){
-  var el=document.getElementById('off-status'); if(!el) return;
-  el.style.display=msg?'block':'none';
-  el.style.color=isErr?'var(--red)':'var(--grn)';
-  el.textContent=msg||'';
-}
-function offGetMeta(){ try{ return JSON.parse(localStorage.getItem('rrt_offline_meta')||'{}'); }catch(e){ return {}; } }
-function offParseDate(name){
-  var m=name.match(/(20\d{2})[-_]?(\d{2})[-_]?(\d{2})/);
-  if(m) return m[1]+'-'+m[2]+'-'+m[3];
-  m=name.match(/(\d{2})[-_](\d{2})[-_](20\d{2})/);
-  if(m) return m[3]+'-'+m[2]+'-'+m[1];
-  return null;
-}
-function offRenderMeta(){
-  var el=document.getElementById('off-meta'); if(!el) return;
-  var meta=offGetMeta();
-  function line(k,label){
-    var m=meta[k];
-    if(!m||!m.name) return label+': <span style="color:var(--t1)">(sin cargar)</span>';
-    return label+': '+m.name+(m.date?(' <span style="color:var(--grn)">['+m.date+']</span>'):'');
-  }
-  var on=meta.online&&meta.online.fecha?('\uD83C\uDF10 En linea: '+meta.online.fecha+'<br>'):'';
-  el.innerHTML=on+'\uD83D\uDCC4 '+line('est','Estaciones')+'<br>\uD83D\uDCE1 '+line('cable','Cableros');
-}
-function offSetMeta(kind, filename){
-  var meta=offGetMeta();
-  var nd=offParseDate(filename);
-  var prev=meta[kind];
-  var older=(prev && prev.date && nd && nd<prev.date) ? prev.date : null;
-  meta[kind]={ name:filename, date:nd, loadedAt:new Date().toISOString() };
-  try{ localStorage.setItem('rrt_offline_meta', JSON.stringify(meta)); }catch(e){}
-  offRenderMeta();
-  return older;
-}
-function offEstFile(file){
-  if(!file) return;
-  var rd=new FileReader();
-  rd.onload=function(){
-    try{
-      var rows=parseCSV(rd.result), st=[];
-      for(var i=0;i<rows.length;i++){ var s=rowToStation(rows[i]); if(s) st.push(s); }
-      if(!st.length){ offStatus('Ese archivo no parece la hoja de ESTACIONES.', true); return; }
-      ALL=st; saveDB();
-      var older=offSetMeta('est', file.name);
-      updateStats(); applyF();
-      offStatus((older?('\u26A0 Es anterior a la que tenias ('+older+'). '):'')+st.length+' estaciones cargadas.', !!older);
-    }catch(e){ offStatus('Error al leer estaciones: '+e.message, true); }
-  };
-  rd.readAsText(file);
-}
-function offCableFile(file){
-  if(!file) return;
-  var rd=new FileReader();
-  rd.onload=function(){
-    try{
-      var rows=parseCSV(rd.result), objs=[];
-      for(var i=0;i<rows.length;i++){ var o=cableRowToObj(rows[i]); if(o) objs.push(o); }
-      if(!objs.length){ offStatus('Ese archivo no parece la hoja de CABLEOPERADORES.', true); return; }
-      CABLE=objs; saveCable();
-      var older=offSetMeta('cable', file.name);
-      fillCablePaises(); renderCable();
-      offStatus((older?('\u26A0 Es anterior a la que tenias ('+older+'). '):'')+objs.length+' cableoperadores cargados.', !!older);
-    }catch(e){ offStatus('Error al leer cableros: '+e.message, true); }
-  };
-  rd.readAsText(file);
-}
-function offDownload(){ window.open(OFFLINE_DRIVE_URL, '_blank'); }
-
-
 // ═══════════════════════════════════════════════════════════
 //  LECTURA DESDE EL SERVIDOR (solo lectura - User / Invitado)
 //  Baja al entrar y con el boton "Actualizar". No sube nada.
@@ -1331,8 +1145,7 @@ function doLogin(){
     document.getElementById('app').style.display = 'flex';
     applyRole();
     initApp();
-    offRenderMeta();
-    cargarDesdeGitHub(false);
+    if(serverDisponible() && esVisorPuro()){ refreshFromServer(false); }
     setTimeout(function(){ if(MAP) MAP.invalidateSize(); }, 350);
   } else {
     document.getElementById('lerr').style.display = 'block';
@@ -1660,6 +1473,13 @@ function selStation(id){
     ['NIVEL',s.niv||'-'],['COORDS',s.lat?s.lat.toFixed(5)+', '+s.lng.toFixed(5):'Sin coordenadas']
   ];
   var fg=rows.map(function(r){return '<div class="fr"><div class="fk">'+r[0]+'</div><div class="fv">'+r[1]+'</div></div>';}).join('');
+  // ── Bloque destacado: ULTIMA ACTUALIZACION (columna I del CSV) ──
+  var ultText=(s.events&&s.events.length&&s.events[0].text)?s.events[0].text:(s.mot||'');
+  var ultDate=(s.events&&s.events.length&&s.events[0].date)?s.events[0].date:'';
+  if(ultText && ultText.trim()){
+    var ultBlock='<div class="ult-act"><div class="ult-act-h">\uD83D\uDCCC ULTIMA ACTUALIZACION'+(ultDate?(' \u00B7 '+ultDate):'')+'</div><div class="ult-act-t">'+esc(ultText.trim())+'</div></div>';
+    fg = ultBlock + fg;
+  }
   // Render events history
   var eventsHtml='';
   var isAdmin=CUR_USER&&CUR_USER.role==='admin';
@@ -1775,8 +1595,7 @@ var TILES = {
   sat: {
     url:  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
     attr: '&copy; Esri &copy; DigitalGlobe',
-    maxZ: 19,
-    maxNativeZ: 17
+    maxZ: 19
   }
 };
 
@@ -1790,7 +1609,7 @@ function setMapStyle(style){
   if(BASE_LAYER) MAP.removeLayer(BASE_LAYER);
   var tileKey = style === 'light' ? 'light' : style === 'sat' ? 'sat' : 'dark';
   var t = TILES[tileKey];
-  BASE_LAYER = L.tileLayer(t.url, {attribution:t.attr, maxZoom:t.maxZ, maxNativeZoom:t.maxNativeZ||t.maxZ});
+  BASE_LAYER = L.tileLayer(t.url, {attribution:t.attr, maxZoom:t.maxZ});
   BASE_LAYER.addTo(MAP);
   BASE_LAYER.bringToBack();
 }
@@ -1799,7 +1618,7 @@ function activateSat(){
   if(MAP_STYLE==='sat'){
     if(BASE_LAYER) MAP.removeLayer(BASE_LAYER);
     var t=TILES.sat;
-    BASE_LAYER=L.tileLayer(t.url,{attribution:t.attr,maxZoom:t.maxZ,maxNativeZoom:t.maxNativeZ||t.maxZ});
+    BASE_LAYER=L.tileLayer(t.url,{attribution:t.attr,maxZoom:t.maxZ});
     BASE_LAYER.addTo(MAP);
     BASE_LAYER.bringToBack();
   }
@@ -1809,7 +1628,7 @@ function initMap(){
   MAP=L.map('map',{zoomControl:false}).setView([-9.5,-76],5);
   L.control.zoom({position:'topright'}).addTo(MAP);
   var t=TILES.dark;
-  BASE_LAYER=L.tileLayer(t.url,{attribution:t.attr,maxZoom:t.maxZ,maxNativeZoom:t.maxNativeZ||t.maxZ}).addTo(MAP);
+  BASE_LAYER=L.tileLayer(t.url,{attribution:t.attr,maxZoom:t.maxZ}).addTo(MAP);
   MAP.on('zoomend', renderMarkers);
 }
 
@@ -2100,7 +1919,7 @@ function initApp(){
     clog('Base local: '+ALL.length+' estaciones');
     updateStats(); applyF();
   } else {
-    clog('Sin datos - carga un CSV desde el menu lateral',true);
+    clog('Sin datos - usa Importar CSV',true);
     renderList(); renderTable();
   }
 }
