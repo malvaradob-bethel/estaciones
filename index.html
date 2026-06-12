@@ -1,0 +1,2613 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"/>
+<title>Red R&T - Monitoreo Offline (Movil)</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg0:#0b0d12; --bg1:#111318; --bg2:#181c25; --bg3:#1e2330; --bg4:#252c3d;
+  --line:rgba(255,255,255,.06); --line2:rgba(255,255,255,.13);
+  --t0:#eef0f8; --t1:#b0b8d0; --t2:#606880;
+  --acc:#4f8ef7; --grn:#2ecc71; --red:#e74c3c; --yel:#f0b429; --pur:#9b59b6;
+  --font:'Inter',sans-serif; --mono:'JetBrains Mono',monospace;
+  --r:8px; --r2:12px; --sw:390px;
+}
+*, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+html, body { height:100%; font-family:var(--font); background:var(--bg0); color:var(--t0); overflow:hidden; font-size:14px; }
+
+/* LOGIN */
+#login-ov { position:fixed; inset:0; z-index:9999; background:var(--bg0); display:flex; align-items:center; justify-content:center; }
+.lcard { width:340px; background:var(--bg1); border:1px solid var(--line2); border-radius:16px; padding:36px; }
+.llogo { text-align:center; margin-bottom:28px; }
+.llogo .brand { font-size:30px; font-weight:700; letter-spacing:4px; }
+.llogo .sub { font-size:10px; font-family:var(--mono); color:var(--t2); letter-spacing:3px; margin-top:5px; }
+.lcard label { font-size:12px; color:var(--t1); display:block; margin-bottom:6px; font-weight:500; }
+.lcard input { width:100%; padding:11px 13px; margin-bottom:14px; background:var(--bg2); border:1px solid var(--line2); border-radius:var(--r); color:var(--t0); font-family:var(--mono); font-size:14px; outline:none; }
+.lcard input:focus { border-color:var(--acc); }
+.btn-p { padding:11px 20px; background:var(--acc); border:none; color:#fff; font-family:var(--font); font-size:14px; font-weight:600; border-radius:var(--r); cursor:pointer; }
+.btn-p:hover { opacity:.88; }
+.btn-p.full { width:100%; }
+.btn-g { padding:9px 16px; background:transparent; border:1px solid var(--line2); color:var(--t1); font-family:var(--font); font-size:13px; border-radius:var(--r); cursor:pointer; }
+.btn-g:hover { color:var(--t0); }
+.btn-d { padding:9px 16px; background:rgba(231,76,60,.12); border:1px solid var(--red); color:var(--red); font-family:var(--font); font-size:13px; border-radius:var(--r); cursor:pointer; }
+#lerr { font-size:12px; color:var(--red); text-align:center; margin-top:8px; display:none; }
+
+/* LOADING */
+#load-ov { position:fixed; inset:0; z-index:600; background:rgba(11,13,18,.94); display:none; flex-direction:column; align-items:center; justify-content:center; gap:14px; }
+.spin { width:34px; height:34px; border-radius:50%; border:2px solid var(--bg3); border-top-color:var(--acc); animation:spin .7s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+
+/* APP */
+#app { display:flex; height:100vh; overflow:hidden; }
+
+/* SIDEBAR */
+#sb { width:var(--sw); flex-shrink:0; background:var(--bg1); border-right:1px solid var(--line); display:flex; flex-direction:column; overflow:hidden; transition:transform .28s; z-index:100; }
+#sb.off { transform:translateX(-100%); position:absolute; height:100%; }
+.sbh { padding:14px 16px 11px; border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; }
+.brow-top { display:flex; align-items:center; gap:9px; }
+.bdot { width:8px; height:8px; border-radius:50%; background:var(--grn); box-shadow:0 0 5px var(--grn); animation:pd 2s infinite; }
+@keyframes pd { 0%,100%{opacity:1} 50%{opacity:.25} }
+.bname { font-size:14px; font-weight:700; letter-spacing:1.5px; }
+.bsub { font-size:9px; font-family:var(--mono); color:var(--t2); letter-spacing:2px; margin-top:2px; }
+.btn-new { background:rgba(79,142,247,.15); border:1px solid var(--acc); color:var(--acc); padding:6px 12px; border-radius:var(--r); font-size:12px; font-family:var(--font); font-weight:600; cursor:pointer; }
+.btn-new:hover { background:rgba(79,142,247,.28); }
+
+/* STATS */
+.stats { display:grid; grid-template-columns:1fr 1fr 1fr; gap:7px; padding:10px 14px; border-bottom:1px solid var(--line); }
+.sbox { background:var(--bg2); border-radius:var(--r2); padding:10px; text-align:center; cursor:pointer; border:1px solid transparent; transition:all .15s; }
+.sbox:hover { background:var(--bg3); }
+.sbox.on { border-color:currentColor; }
+.sbox .v { font-size:24px; font-weight:700; font-family:var(--mono); line-height:1; }
+.sbox .l { font-size:9px; color:var(--t2); letter-spacing:1.5px; margin-top:3px; font-weight:500; }
+.s-aa .v { color:var(--grn); } .s-aa.on,.s-aa:hover { background:rgba(46,204,113,.08); }
+.s-fa .v { color:var(--red); } .s-fa.on,.s-fa:hover { background:rgba(231,76,60,.08); }
+.s-ni .v { color:var(--yel); } .s-ni.on,.s-ni:hover { background:rgba(240,180,41,.08); }
+
+/* TABS */
+.ztabs { display:flex; gap:3px; padding:8px 14px; border-bottom:1px solid var(--line); }
+.ztab { flex:1; padding:6px 3px; font-family:var(--font); font-size:11px; font-weight:600; letter-spacing:.5px; color:var(--t2); background:transparent; border:1px solid transparent; border-radius:var(--r); cursor:pointer; transition:all .15s; }
+.ztab:hover { color:var(--t0); background:var(--bg3); }
+.ztab.on { color:var(--acc); border-color:var(--acc); background:rgba(79,142,247,.1); }
+
+/* BANDA PILLS */
+.bprow { display:flex; gap:5px; padding:7px 14px; border-bottom:1px solid var(--line); }
+.bpill-f { padding:4px 10px; font-family:var(--mono); font-size:10px; font-weight:500; border-radius:20px; cursor:pointer; border:1px solid var(--line); color:var(--t2); background:transparent; transition:all .12s; }
+.bpill-f.fm.on { background:rgba(46,204,113,.15); border-color:var(--grn); color:var(--grn); }
+.bpill-f.am.on { background:rgba(240,180,41,.15); border-color:var(--yel); color:var(--yel); }
+.bpill-f.vhf.on { background:rgba(79,142,247,.15); border-color:var(--acc); color:var(--acc); }
+.bpill-f.uhf.on { background:rgba(155,89,182,.15); border-color:var(--pur); color:var(--pur); }
+.bpill-f.om.on { background:rgba(230,126,34,.15); border-color:#e67e22; color:#e67e22; }
+
+/* SEARCH */
+.srch { padding:8px 14px; border-bottom:1px solid var(--line); }
+.srch input { width:100%; padding:8px 12px; background:var(--bg2); border:1px solid var(--line2); border-radius:var(--r); color:var(--t0); font-family:var(--font); font-size:13px; outline:none; }
+.srch input::placeholder { color:var(--t2); }
+.srch input:focus { border-color:var(--acc); }
+
+/* LIST */
+#stlist { flex:1; min-height:80px; max-height:260px; overflow-y:auto; padding:5px 8px; }
+#stlist::-webkit-scrollbar { width:3px; }
+#stlist::-webkit-scrollbar-thumb { background:var(--bg4); border-radius:2px; }
+.si { display:flex; align-items:center; gap:9px; padding:9px 9px; border-radius:var(--r2); cursor:pointer; margin-bottom:2px; border:1px solid transparent; transition:background .1s; }
+.si:hover { background:var(--bg2); }
+.si.on { background:var(--bg2); border-color:rgba(79,142,247,.4); }
+.sdot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.sinfo { flex:1; min-width:0; }
+.sname { font-size:13px; font-weight:600; color:var(--t0); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.smeta { font-size:11px; font-family:var(--mono); color:var(--t2); margin-top:1px; }
+.sbadge { font-size:10px; font-family:var(--mono); font-weight:600; padding:2px 6px; border-radius:4px; flex-shrink:0; }
+.b-aa { background:rgba(46,204,113,.15); color:var(--grn); }
+.b-fa { background:rgba(231,76,60,.15); color:var(--red); }
+.b-ni { background:rgba(240,180,41,.15); color:var(--yel); }
+
+/* FICHA */
+#ficha { border-top:1px solid var(--line); padding:14px 16px; background:var(--bg0); max-height:340px; overflow-y:auto; flex-shrink:0; display:none; }
+#ficha.on { display:block; }
+.fh { display:flex; justify-content:space-between; align-items:center; margin-bottom:9px; }
+.fn { font-size:14px; font-weight:700; }
+.fbtns { display:flex; gap:5px; }
+.fedit { background:rgba(79,142,247,.15); border:1px solid var(--acc); color:var(--acc); padding:4px 10px; border-radius:5px; font-size:11px; font-family:var(--font); font-weight:600; cursor:pointer; }
+.fdel { background:rgba(231,76,60,.1); border:1px solid var(--red); color:var(--red); padding:4px 10px; border-radius:5px; font-size:11px; font-family:var(--font); font-weight:600; cursor:pointer; }
+.fclose { background:none; border:none; color:var(--t2); font-size:16px; cursor:pointer; padding:2px 6px; }
+.fg { display:grid; grid-template-columns:1fr 1fr; gap:6px 12px; }
+.fr .fk { font-size:10px; font-family:var(--mono); color:var(--t2); text-transform:uppercase; letter-spacing:.5px; }
+.fr .fv { font-size:12px; color:var(--t0); margin-top:2px; font-weight:600; }
+.finc { grid-column:1/-1; margin-top:5px; padding:8px 10px; background:var(--bg2); border-radius:var(--r); border-left:3px solid var(--acc); }
+.finc .fk { font-size:10px; font-family:var(--mono); color:var(--t2); text-transform:uppercase; letter-spacing:.5px; margin-bottom:4px; }
+.finc .fv { font-size:12px; color:var(--t1); line-height:1.5; white-space:pre-wrap; word-break:break-word; }
+
+/* MAIN */
+#main { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+#topbar { background:var(--bg1); border-bottom:1px solid var(--line); padding:0 15px; height:50px; display:flex; align-items:center; justify-content:space-between; flex-shrink:0; z-index:10; gap:10px; }
+#tog { background:var(--bg2); border:1px solid var(--line2); color:var(--t1); width:32px; height:32px; border-radius:var(--r); cursor:pointer; font-size:14px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+#tog:hover { color:var(--t0); }
+.topright { display:flex; align-items:center; gap:7px; flex-wrap:nowrap; }
+.vtabs { display:flex; gap:3px; }
+.vt { padding:5px 12px; font-size:12px; font-weight:600; font-family:var(--font); background:transparent; border:1px solid var(--line); border-radius:5px; color:var(--t2); cursor:pointer; transition:all .12s; }
+.vt:hover { color:var(--t0); }
+.vt.on { background:var(--bg3); border-color:var(--acc); color:var(--acc); }
+#conbar { padding:3px 11px; background:var(--bg0); border-radius:5px; font-family:var(--mono); font-size:10px; color:var(--grn); max-width:260px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; flex-shrink:1; }
+.tbtn { background:var(--bg2); border:1px solid var(--line2); color:var(--t1); padding:5px 11px; border-radius:var(--r); cursor:pointer; font-size:12px; font-family:var(--font); font-weight:500; white-space:nowrap; flex-shrink:0; transition:all .12s; }
+.tbtn:hover { color:var(--t0); }
+.tbtn.imp { background:rgba(79,142,247,.15); border-color:var(--acc); color:var(--acc); }
+.tbtn.imp:hover { background:rgba(79,142,247,.28); }
+.tbtn.exp { background:rgba(46,204,113,.1); border-color:var(--grn); color:var(--grn); }
+.tbtn.exp:hover { background:rgba(46,204,113,.2); }
+.admin-only { display:none !important; }
+body.is-admin .admin-only { display:inline-flex !important; }
+
+/* MAP */
+#map-v { flex:1; display:flex; overflow:hidden; position:relative; }
+#map { flex:1; }
+.leaflet-container { background:#0b0d12; }
+.leaflet-control-zoom { margin-top:58px!important; }
+.leaflet-popup-content-wrapper { background:var(--bg1)!important; border:1px solid var(--line2)!important; border-radius:10px!important; color:var(--t0)!important; box-shadow:0 8px 28px rgba(0,0,0,.8)!important; min-width:200px; }
+.leaflet-popup-tip { background:var(--bg1)!important; }
+.leaflet-popup-content { margin:13px 16px!important; font-family:var(--font)!important; font-size:13px!important; }
+.leaflet-popup-close-button { color:var(--t2)!important; }
+.pp-title { font-size:14px; font-weight:700; margin-bottom:8px; padding-bottom:6px; border-bottom:1px solid var(--line); }
+.pp-row { display:flex; gap:8px; margin:4px 0; font-size:12px; }
+.pp-k { color:var(--t2); font-family:var(--mono); min-width:66px; font-size:10px; padding-top:1px; }
+.pp-v { font-weight:600; }
+.pp-edit { display:block; margin-top:10px; padding:6px; text-align:center; background:rgba(79,142,247,.15); border:1px solid var(--acc); color:var(--acc); border-radius:5px; font-size:12px; cursor:pointer; font-family:var(--font); font-weight:600; }
+#legend { position:absolute; bottom:20px; right:11px; z-index:500; background:rgba(17,19,24,.95); border:1px solid var(--line2); border-radius:9px; padding:11px 14px; font-size:12px; }
+.leg { display:flex; align-items:center; gap:8px; margin-bottom:6px; color:var(--t1); font-weight:500; }
+.leg:last-child { margin-bottom:0; }
+.ldot { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
+
+/* TABLE */
+#tbl-v { flex:1; overflow:auto; display:none; padding:12px; }
+#tbl-v::-webkit-scrollbar { width:4px; height:4px; }
+#tbl-v::-webkit-scrollbar-thumb { background:var(--bg4); border-radius:2px; }
+.dtbl { width:100%; border-collapse:collapse; min-width:880px; }
+.dtbl th { background:var(--bg2); font-size:10px; font-family:var(--mono); color:var(--t2); letter-spacing:1.5px; padding:9px 11px; text-align:left; border-bottom:1px solid var(--line2); position:sticky; top:0; z-index:5; }
+.dtbl td { padding:8px 11px; font-size:13px; border-bottom:1px solid var(--line); vertical-align:middle; }
+.dtbl tr:hover td { background:var(--bg2); cursor:pointer; }
+.bpill { font-family:var(--mono); font-size:10px; font-weight:600; padding:2px 7px; border-radius:3px; }
+.bpill.fm { color:var(--grn); background:rgba(46,204,113,.1); }
+.bpill.am { color:var(--yel); background:rgba(240,180,41,.1); }
+.bpill.vhf { color:var(--acc); background:rgba(79,142,247,.1); }
+.bpill.uhf { color:var(--pur); background:rgba(155,89,182,.1); }
+.bpill.om { color:#e67e22; background:rgba(230,126,34,.1); }
+.frq { font-family:var(--mono); color:var(--acc); font-size:11px; font-weight:600; }
+.nc { font-family:var(--mono); color:var(--t2); font-size:11px; }
+.tact { display:flex; gap:4px; }
+.tact button { padding:3px 9px; border-radius:4px; font-size:11px; cursor:pointer; font-family:var(--font); font-weight:600; border:1px solid; transition:all .12s; }
+.tact .te { background:rgba(79,142,247,.12); border-color:var(--acc); color:var(--acc); }
+.tact .td { background:rgba(231,76,60,.1); border-color:var(--red); color:var(--red); }
+
+/* IMPORT MODAL */
+.modal-bg { position:fixed; inset:0; z-index:800; background:rgba(0,0,0,.8); display:none; align-items:flex-start; justify-content:center; padding:36px 16px; overflow-y:auto; }
+.modal-bg.on { display:flex; }
+.modal { background:var(--bg1); border:1px solid var(--line2); border-radius:14px; padding:26px; width:540px; max-width:100%; margin-bottom:36px; }
+.modal h3 { font-size:16px; font-weight:700; margin-bottom:18px; }
+.drop-zone { border:2px dashed var(--line2); border-radius:10px; padding:28px; text-align:center; cursor:pointer; transition:all .2s; margin-bottom:12px; }
+.drop-zone:hover, .drop-zone.over { border-color:var(--acc); background:rgba(79,142,247,.04); }
+.drop-zone .dicon { font-size:28px; margin-bottom:8px; opacity:.4; }
+.drop-zone p { font-size:13px; color:var(--t2); line-height:1.7; }
+.drop-zone strong { color:var(--t1); }
+#import-log { margin-top:12px; padding:13px; background:var(--bg0); border-radius:var(--r); font-size:12px; font-family:var(--mono); line-height:1.8; min-height:50px; display:none; white-space:pre-wrap; border:1px solid var(--line); }
+.ifooter { display:flex; justify-content:space-between; align-items:center; margin-top:14px; }
+.ifooter small { font-size:10px; color:var(--t2); font-family:var(--mono); }
+
+/* FORM MODAL */
+.form-grid { display:grid; grid-template-columns:1fr 1fr; gap:11px 14px; }
+.fgroup { display:flex; flex-direction:column; gap:4px; }
+.fgroup.full { grid-column:1/-1; }
+.fgroup label { font-size:10px; color:var(--t1); letter-spacing:.5px; font-family:var(--mono); text-transform:uppercase; }
+.fgroup input, .fgroup select, .fgroup textarea { padding:9px 12px; background:var(--bg2); border:1px solid var(--line2); border-radius:var(--r); color:var(--t0); font-family:var(--font); font-size:13px; outline:none; width:100%; }
+.fgroup input:focus, .fgroup select:focus, .fgroup textarea:focus { border-color:var(--acc); }
+.fgroup select option { background:var(--bg2); color:var(--t0); }
+.fgroup textarea { resize:vertical; min-height:70px; line-height:1.5; }
+.fsec { grid-column:1/-1; font-size:10px; font-family:var(--mono); color:var(--t2); letter-spacing:2px; text-transform:uppercase; padding:5px 0 1px; border-top:1px solid var(--line); margin-top:3px; }
+.mfooter { display:flex; justify-content:flex-end; gap:9px; margin-top:20px; }
+
+/* CONFIRM */
+#confirm-bg { position:fixed; inset:0; z-index:900; background:rgba(0,0,0,.8); display:none; align-items:center; justify-content:center; }
+#confirm-bg.on { display:flex; }
+.confirm-card { background:var(--bg1); border:1px solid var(--line2); border-radius:12px; padding:26px; width:340px; max-width:95vw; text-align:center; }
+.confirm-card p { font-size:14px; color:var(--t1); margin-bottom:20px; line-height:1.5; }
+.confirm-card .cbtns { display:flex; gap:9px; justify-content:center; }
+.map-style-tabs{display:flex;gap:3px}
+.map-style-btn{padding:4px 9px;font-size:10px;font-weight:600;font-family:var(--font);background:transparent;border:1px solid var(--line);border-radius:5px;color:var(--t2);cursor:pointer;transition:all .12s;white-space:nowrap}
+.map-style-btn:hover{color:var(--t0)}
+.map-style-btn.on{background:rgba(155,89,182,.15);border-color:var(--pur);color:var(--pur)}
+
+/* ── IMPROVED TABLE ── */
+.dtbl { font-size:13px; }
+.dtbl th { font-size:10px; letter-spacing:1px; padding:9px 10px; white-space:nowrap; }
+.dtbl td { padding:8px 10px; border-bottom:1px solid var(--line); vertical-align:middle; }
+.dtbl tr:hover td { background:rgba(255,255,255,.03); cursor:pointer; }
+.dtbl tr:nth-child(even) td { background:rgba(255,255,255,.01); }
+.dtbl tr:hover:nth-child(even) td { background:rgba(255,255,255,.04); }
+
+/* Row action icon-buttons */
+.row-btns { display:flex; gap:4px; align-items:center; flex-wrap:nowrap; }
+.rbtn { display:inline-flex; align-items:center; gap:4px; padding:4px 8px;
+  border-radius:5px; font-size:11px; font-family:var(--font); font-weight:600;
+  cursor:pointer; border:1px solid; transition:all .12s; white-space:nowrap; }
+.rbtn-inc  { background:rgba(46,204,113,.12); border-color:var(--grn); color:var(--grn); }
+.rbtn-inc:hover { background:rgba(46,204,113,.25); }
+.rbtn-hist { background:rgba(79,142,247,.12); border-color:var(--acc); color:var(--acc); }
+.rbtn-hist:hover { background:rgba(79,142,247,.25); }
+.rbtn-doc  { background:rgba(176,122,248,.12); border-color:var(--pur); color:var(--pur); }
+.rbtn-doc:hover { background:rgba(176,122,248,.22); }
+.rbtn-edit { background:rgba(240,180,41,.12); border-color:var(--yel); color:var(--yel); }
+.rbtn-edit:hover { background:rgba(240,180,41,.25); }
+.rbtn-del  { background:rgba(231,76,60,.1); border-color:var(--red); color:var(--red); }
+.rbtn-del:hover { background:rgba(231,76,60,.22); }
+
+/* ── HISTORIAL MODAL ── */
+#hist-bg { position:fixed;inset:0;z-index:820;background:rgba(0,0,0,.8);
+  display:none;align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto; }
+#hist-bg.on { display:flex; }
+.hist-card { background:var(--bg1);border:1px solid var(--line2);border-radius:14px;
+  padding:26px;width:600px;max-width:100%; }
+.hist-card h3 { font-size:16px;font-weight:700;margin-bottom:4px;color:var(--t0); }
+.hist-subtitle { font-size:12px;font-family:var(--mono);color:var(--t2);margin-bottom:18px; }
+.hist-entry { background:var(--bg2);border-radius:8px;padding:12px 14px;margin-bottom:8px;
+  border-left:3px solid var(--line2); }
+.hist-entry.latest { border-left-color:var(--grn); }
+.hist-entry-header { display:flex;justify-content:space-between;align-items:center;margin-bottom:6px; }
+.hist-entry-user { font-size:11px;font-family:var(--mono);color:var(--acc);font-weight:600; }
+.hist-entry-date { font-size:10px;font-family:var(--mono);color:var(--t2); }
+.hist-entry-text { font-size:13px;color:var(--t1);line-height:1.5; }
+.hist-entry-del  { background:none;border:none;color:var(--red);font-size:13px;
+  cursor:pointer;padding:0 4px;opacity:.6; }
+.hist-entry-del:hover { opacity:1; }
+.hist-empty { text-align:center;padding:28px;font-size:13px;color:var(--t2);font-family:var(--mono); }
+
+/* ── INCIDENCIA MODAL tweaks ── */
+.inc-state-row { display:flex;gap:8px;margin-bottom:14px; }
+.inc-state-btn { flex:1;padding:8px 6px;border-radius:6px;font-size:12px;font-family:var(--font);
+  font-weight:600;cursor:pointer;border:1px solid var(--line);color:var(--t2);
+  background:transparent;transition:all .15s;text-align:center; }
+.inc-state-btn.aa.sel { background:rgba(46,204,113,.15);border-color:var(--grn);color:var(--grn); }
+.inc-state-btn.fa.sel { background:rgba(231,76,60,.15);border-color:var(--red);color:var(--red); }
+.inc-state-btn.ni.sel { background:rgba(240,180,41,.15);border-color:var(--yel);color:var(--yel); }
+.btn-prim{padding:10px 20px;background:var(--acc);border:none;color:#fff;font-family:var(--font);font-size:13px;font-weight:600;border-radius:var(--r);cursor:pointer;transition:opacity .15s}
+.btn-prim:hover{opacity:.88}
+.btn-prim.full{width:100%}
+
+/* Admin visibility via body class — overrides .admin-only display:none */
+body.is-admin .admin-only { display: inline-flex !important; }
+body.is-admin .admin-only.tbtn { display: inline-flex !important; }
+body.is-admin .btn-new { display: inline-flex !important; }
+body.is-admin .admin-only { display: inline-flex !important; }
+body.is-admin #th-acciones { display: table-cell !important; }
+/* Non-admin: keep hidden */
+#th-acciones { display: none; }
+/* td-act: no pointer interference */
+.td-act { white-space: nowrap; }
+
+/* ── VISIBILIDAD CABLEOPERADORES (admin + distribuidor) ── */
+.cable-only { display:none !important; }
+body.is-admin .cable-only, body.is-cable .cable-only { display:inline-flex !important; }
+/* topbar cable buttons */
+body.is-admin .cable-act, body.is-cable .cable-act { display:inline-flex !important; }
+.cable-act { display:none !important; }
+
+/* ── VISTA CABLEOPERADORES ── */
+#cable-v { display:none; flex:1; overflow:auto; padding:0; }
+#cable-v .cable-toolbar { display:flex; align-items:center; gap:8px; padding:10px 14px;
+  border-bottom:1px solid var(--line); background:var(--bg1); flex-wrap:wrap; position:sticky; top:0; z-index:5; }
+#cable-v .cable-toolbar .csearch { flex:1; min-width:160px; padding:8px 12px; background:var(--bg2);
+  border:1px solid var(--line2); border-radius:var(--r); color:var(--t0); font-family:var(--font); font-size:13px; outline:none; }
+#cable-v .cable-toolbar .csearch:focus { border-color:var(--acc); }
+#cable-v .cable-toolbar select { padding:8px 10px; background:var(--bg2); border:1px solid var(--line2);
+  border-radius:var(--r); color:var(--t0); font-family:var(--font); font-size:12px; outline:none; }
+.cable-count { font-size:11px; font-family:var(--mono); color:var(--t2); white-space:nowrap; }
+.ctbl { width:100%; border-collapse:collapse; font-size:12px; }
+.ctbl th { position:sticky; top:53px; background:var(--bg1); z-index:4; font-size:10px; letter-spacing:.5px;
+  text-transform:uppercase; color:var(--t1); padding:9px 8px; text-align:left; border-bottom:1px solid var(--line2); white-space:nowrap; }
+.ctbl td { padding:7px 8px; border-bottom:1px solid var(--line); color:var(--t1); vertical-align:top; max-width:200px; }
+.ctbl tr:hover td { background:rgba(255,255,255,.03); }
+.ctbl tr:nth-child(even) td { background:rgba(255,255,255,.012); }
+.ctbl tr:hover:nth-child(even) td { background:rgba(255,255,255,.04); }
+.ctbl .cname { font-weight:600; color:var(--t0); }
+.cflag { font-size:10px; padding:1px 6px; border-radius:3px; background:var(--bg3); color:var(--t2);
+  font-family:var(--mono); white-space:nowrap; }
+.cstate { font-size:10px; padding:1px 7px; border-radius:3px; font-family:var(--mono); white-space:nowrap; }
+.cstate.nueva { background:rgba(46,204,113,.12); color:var(--grn); }
+.cstate.act { background:rgba(79,142,247,.12); color:var(--acc); }
+.cstate.conf { background:rgba(240,180,41,.12); color:var(--yel); }
+.cbtns { display:flex; gap:4px; }
+.cbtn { padding:3px 8px; border-radius:5px; font-size:11px; font-family:var(--font); font-weight:600;
+  cursor:pointer; border:1px solid; white-space:nowrap; }
+.cbtn-edit { background:rgba(240,180,41,.12); border-color:var(--yel); color:var(--yel); }
+.cbtn-edit:hover { background:rgba(240,180,41,.25); }
+.cbtn-del { background:rgba(231,76,60,.1); border-color:var(--red); color:var(--red); }
+.cbtn-del:hover { background:rgba(231,76,60,.22); }
+
+/* ── MODAL FORM CABLEOPERADOR ── */
+#cform-bg { position:fixed; inset:0; z-index:840; background:rgba(0,0,0,.82);
+  display:none; align-items:flex-start; justify-content:center; padding:30px 16px; overflow-y:auto; }
+#cform-bg.on { display:flex; }
+.cform-card { background:var(--bg1); border:1px solid var(--line2); border-radius:14px; padding:24px; width:640px; max-width:100%; }
+.cform-card h3 { font-size:16px; font-weight:700; color:var(--t0); margin-bottom:16px; }
+.cform-grid { display:grid; grid-template-columns:1fr 1fr; gap:11px 14px; margin-bottom:16px; }
+.cform-field { display:flex; flex-direction:column; gap:4px; }
+.cform-field.full { grid-column:1 / -1; }
+.cform-field label { font-size:10px; font-family:var(--mono); color:var(--t1); letter-spacing:.5px; text-transform:uppercase; }
+.cform-field input, .cform-field textarea { padding:9px 11px; background:var(--bg2); border:1px solid var(--line2);
+  border-radius:var(--r); color:var(--t0); font-family:var(--font); font-size:13px; outline:none; }
+.cform-field input:focus, .cform-field textarea:focus { border-color:var(--acc); }
+.cform-actions { display:flex; justify-content:flex-end; gap:8px; }
+
+
+/* Pill CABLE en el mapa */
+.bpill-f.cable { border-color:#3b82f6; color:#3b82f6; background:rgba(59,130,246,.10); }
+.bpill-f.cable.on { background:#3b82f6; color:#fff; border-color:#3b82f6; }
+/* Tooltip de cablero (hover) */
+.cable-tip { background:var(--bg1); border:1px solid #3b82f6; border-radius:8px; padding:8px 10px;
+  font-family:var(--font); color:var(--t0); box-shadow:0 6px 20px rgba(0,0,0,.5); max-width:280px; }
+.cable-tip .ct-h { font-size:11px; font-family:var(--mono); color:#3b82f6; margin-bottom:5px; font-weight:700; letter-spacing:.5px; }
+.cable-tip .ct-row { font-size:12px; padding:2px 0; display:flex; gap:8px; align-items:baseline; border-top:1px solid var(--line); }
+.cable-tip .ct-row:first-of-type { border-top:none; }
+.cable-tip .ct-name { font-weight:600; color:var(--t0); }
+.cable-tip .ct-canal { font-family:var(--mono); font-size:11px; color:#3b82f6; white-space:nowrap; }
+.leaflet-tooltip.cable-tip-wrap { background:transparent; border:none; box-shadow:none; padding:0; }
+.leaflet-tooltip.cable-tip-wrap::before { display:none; }
+
+/* Tooltip hover de estaciones (reusa estilo popup) */
+.leaflet-tooltip.st-tip-wrap { background:var(--bg1); border:1px solid var(--line2); border-radius:8px;
+  padding:10px 12px; box-shadow:0 6px 20px rgba(0,0,0,.5); color:var(--t0); max-width:240px; }
+.leaflet-tooltip.st-tip-wrap::before { border-top-color:var(--line2); }
+.leaflet-tooltip.cable-tip-wrap::before { display:none; }
+
+/* ── BOTON Y MODAL ACERCA DE ── */
+.about-btn { border-color:var(--acc) !important; color:var(--acc) !important; }
+.about-btn:hover { background:rgba(79,142,247,.12) !important; }
+#about-bg { position:fixed; inset:0; z-index:860; background:rgba(0,0,0,.84);
+  display:none; align-items:flex-start; justify-content:center; padding:34px 16px; overflow-y:auto; }
+#about-bg.on { display:flex; }
+.about-card { background:var(--bg1); border:1px solid var(--line2); border-radius:16px;
+  padding:30px 32px; width:680px; max-width:100%; }
+.about-card h2 { font-size:20px; font-weight:700; color:var(--t0); margin-bottom:4px; display:flex; align-items:center; gap:9px; }
+.about-card h2 .ico { color:var(--acc); }
+.about-sub { font-size:11px; font-family:var(--mono); color:var(--t2); letter-spacing:.5px; text-transform:uppercase; margin-bottom:20px; }
+.about-card h3 { font-size:13px; font-family:var(--mono); color:var(--acc); letter-spacing:1px; text-transform:uppercase;
+  margin:20px 0 8px; padding-bottom:5px; border-bottom:1px solid var(--line); }
+.about-card p { font-size:14px; line-height:1.7; color:var(--t1); margin-bottom:12px; }
+.about-author { display:flex; align-items:center; gap:10px; padding:12px 14px; background:var(--bg0);
+  border:1px solid var(--line); border-radius:10px; margin:6px 0 4px; }
+.about-author .av { width:38px; height:38px; border-radius:50%; background:linear-gradient(135deg,var(--acc),var(--pur));
+  display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:15px; flex-shrink:0; }
+.about-author .an { font-size:14px; font-weight:600; color:var(--t0); }
+.about-author .ar { font-size:11px; font-family:var(--mono); color:var(--t2); }
+.about-qr-wrap { display:flex; gap:20px; align-items:center; flex-wrap:wrap; background:var(--bg0);
+  border:1px solid var(--line); border-radius:12px; padding:18px; margin:6px 0; }
+.about-qr-wrap img { width:200px; max-width:100%; border-radius:10px; display:block; }
+.about-qr-txt { flex:1; min-width:200px; }
+.about-qr-txt .qt { font-size:13px; line-height:1.6; color:var(--t1); }
+.about-qr-txt .qn { font-size:13px; font-weight:600; color:var(--t0); margin-top:8px; }
+.about-mail { display:inline-flex; align-items:center; gap:7px; margin-top:6px; padding:9px 14px;
+  background:rgba(79,142,247,.12); border:1px solid var(--acc); border-radius:8px; color:var(--acc);
+  font-family:var(--mono); font-size:13px; text-decoration:none; transition:background .15s; }
+.about-mail:hover { background:rgba(79,142,247,.24); }
+.about-foot { font-size:12px; font-style:italic; color:var(--t2); line-height:1.6; margin-top:18px;
+  padding-top:14px; border-top:1px solid var(--line); }
+.about-close-row { display:flex; justify-content:flex-end; margin-top:18px; }
+.about-close-row button { padding:10px 20px; background:var(--bg2); border:1px solid var(--line2);
+  color:var(--t1); font-family:var(--font); font-size:13px; font-weight:600; border-radius:var(--r); cursor:pointer; }
+.about-close-row button:hover { color:var(--t0); border-color:var(--acc); }
+
+/* ── GATING POR PERMISOS ── */
+/* Pestañas: ocultas por defecto, se muestran segun permiso */
+#t-tbl { display:none; }            body.can-stationsview #t-tbl { display:inline-flex; }
+#t-cable { display:none; }          body.can-cabletable #t-cable { display:inline-flex; }
+#t-users { display:none; }          body.can-users #t-users { display:inline-flex; }
+/* Pill CABLE en mapa */
+#pill-cable { display:none; }       body.can-cablemap #pill-cable { display:inline-flex; }
+/* Incidencias / registros (ficha) */
+.freg { display:none !important; }  body.can-incid .freg { display:inline-flex !important; }
+/* Toolbar cableros (+ Cablero/Imp/Exp) ya usa .cable-act -> ligar a can-cableedit */
+.cable-act { display:none !important; }
+body.can-cableedit .cable-act { display:inline-flex !important; }
+/* Vista de usuarios */
+#users-v { display:none; flex:1; overflow:auto; padding:0; }
+.utbl { width:100%; border-collapse:collapse; font-size:13px; }
+.utbl th { position:sticky; top:0; background:var(--bg1); z-index:3; font-size:10px; letter-spacing:.5px;
+  text-transform:uppercase; color:var(--t1); padding:11px 12px; text-align:left; border-bottom:1px solid var(--line2); }
+.utbl td { padding:10px 12px; border-bottom:1px solid var(--line); color:var(--t1); vertical-align:middle; }
+.utbl tr:hover td { background:rgba(255,255,255,.03); }
+.utbl .uname { font-weight:600; color:var(--t0); }
+.urole { font-size:11px; padding:2px 9px; border-radius:4px; font-family:var(--mono); white-space:nowrap; }
+.urole.superadmin { background:rgba(155,89,182,.15); color:var(--pur); }
+.urole.admin { background:rgba(231,76,60,.13); color:var(--red); }
+.urole.gestion { background:rgba(79,142,247,.13); color:var(--acc); }
+.urole.cable { background:rgba(155,89,182,.12); color:var(--pur); }
+.urole.consulta { background:rgba(46,204,113,.12); color:var(--grn); }
+.urole.invitado { background:var(--bg3); color:var(--t2); }
+.upass { font-family:var(--mono); font-size:12px; color:var(--t2); letter-spacing:1px; }
+.ulock { font-size:10px; font-family:var(--mono); color:var(--t2); }
+.users-toolbar { display:flex; align-items:center; gap:10px; padding:12px 16px; border-bottom:1px solid var(--line);
+  background:var(--bg1); position:sticky; top:0; z-index:5; }
+.users-toolbar h3 { font-size:14px; color:var(--t0); margin:0; flex:1; }
+.btn-adduser { padding:9px 16px; background:var(--pur); border:none; color:#fff; font-family:var(--font);
+  font-size:13px; font-weight:700; border-radius:var(--r); cursor:pointer; }
+.btn-adduser:hover { opacity:.9; }
+/* Modal form usuario */
+#uform-bg { position:fixed; inset:0; z-index:850; background:rgba(0,0,0,.82);
+  display:none; align-items:center; justify-content:center; padding:30px 16px; overflow-y:auto; }
+#uform-bg.on { display:flex; }
+.uform-card { background:var(--bg1); border:1px solid var(--line2); border-radius:14px; padding:26px; width:440px; max-width:100%; }
+.uform-card h3 { font-size:16px; font-weight:700; color:var(--t0); margin-bottom:18px; }
+.uform-field { display:flex; flex-direction:column; gap:5px; margin-bottom:14px; }
+.uform-field label { font-size:10px; font-family:var(--mono); color:var(--t1); letter-spacing:.5px; text-transform:uppercase; }
+.uform-field input, .uform-field select { padding:10px 12px; background:var(--bg2); border:1px solid var(--line2);
+  border-radius:var(--r); color:var(--t0); font-family:var(--font); font-size:14px; outline:none; }
+.uform-field input:focus, .uform-field select:focus { border-color:var(--pur); }
+.uform-field .role-desc { font-size:11px; color:var(--t2); font-family:var(--mono); line-height:1.5; min-height:30px; }
+.uform-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:6px; }
+.ubtn-edit { padding:4px 10px; border-radius:5px; font-size:11px; font-weight:600; cursor:pointer;
+  background:rgba(240,180,41,.12); border:1px solid var(--yel); color:var(--yel); }
+.ubtn-edit:hover { background:rgba(240,180,41,.25); }
+.ubtn-del { padding:4px 10px; border-radius:5px; font-size:11px; font-weight:600; cursor:pointer;
+  background:rgba(231,76,60,.1); border:1px solid var(--red); color:var(--red); }
+.ubtn-del:hover { background:rgba(231,76,60,.22); }
+.ubtn-del:disabled { opacity:.3; cursor:not-allowed; }
+
+/* Superadmin: solo USUARIOS (ocultar mapa, estilos, acerca de) */
+#t-map { display:none; }    body.can-map #t-map { display:inline-flex; }
+#t-about { display:none; }  body.can-map #t-about { display:inline-flex; }
+body:not(.can-map) #map-style-tabs { display:none !important; }
+
+
+/* Boton Actualizar + indicador (solo para visores User/Invitado) */
+.visor-only { display:none; }
+body.is-visor .visor-only { display:inline-flex; }
+.refresh-btn { align-items:center; gap:6px; padding:6px 13px; border-radius:20px; font-family:var(--font);
+  font-size:12px; font-weight:600; cursor:pointer; white-space:nowrap; flex-shrink:0;
+  background:rgba(46,204,113,.14); border:1px solid var(--grn); color:var(--grn); transition:all .15s; }
+.refresh-btn:hover { background:rgba(46,204,113,.28); }
+.lite-updated { align-items:center; font-family:var(--mono); font-size:12px; color:var(--t2);
+  white-space:nowrap; padding:5px 10px; border:1px solid var(--line2); border-radius:20px; background:var(--bg1); }
+.lite-updated.flash { color:var(--grn); border-color:var(--grn); }
+
+/* ═══════════════ VERSION MOVIL (celular) ═══════════════ */
+* { -webkit-tap-highlight-color: transparent; }
+html, body { height:100%; width:100%; overflow:hidden; position:fixed; top:0; left:0; right:0; bottom:0; }
+#app { position:relative; width:100vw; height:100vh; height:100dvh; overflow:hidden; display:block; }
+
+/* Main + topbar slim */
+#main { position:absolute; inset:0; display:flex; flex-direction:column; width:100%; height:100%; }
+#topbar { flex-shrink:0; display:flex; align-items:center; gap:6px; padding:8px 10px;
+  flex-wrap:wrap; min-height:50px; z-index:1300; }
+#topbar .topright { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-left:auto; }
+#topbar .vtabs { display:none; }
+#topbar #conbar { display:none; }
+#topbar .topright .tbtn { display:none; }
+.map-style-tabs { display:flex !important; gap:4px; }
+.map-style-btn { padding:5px 8px; font-size:11px; }
+#tog { display:flex !important; align-items:center; justify-content:center; width:42px; height:42px;
+  font-size:20px; border-radius:10px; flex-shrink:0; padding:0; }
+
+/* Mapa a pantalla completa */
+#map-v { flex:1; position:relative; width:100%; min-height:0; }
+#map { position:absolute; inset:0; height:100%; width:100%; }
+#legend { font-size:10px; padding:6px 8px; }
+
+/* Sidebar => cajon lateral deslizable */
+#sb { position:fixed; top:0; left:0; bottom:0; width:268px; max-width:84vw;
+  z-index:1500; transform:translateX(0); transition:transform .25s ease;
+  box-shadow:3px 0 22px rgba(0,0,0,.6); overflow-y:auto; -webkit-overflow-scrolling:touch;
+  display:flex; flex-direction:column; }
+#sb.off { transform:translateX(-100%); }
+.brow-top { display:flex; align-items:center; gap:8px; }
+#sb-close { margin-left:auto; width:34px; height:34px; border-radius:8px; cursor:pointer;
+  background:transparent; border:1px solid var(--line2); color:var(--t1); font-size:15px; flex-shrink:0; }
+
+/* Stats apiladas en vertical */
+#sb .stats { display:flex; flex-direction:column; gap:8px; }
+#sb .stats .sbox { width:auto; }
+
+/* Fondo oscuro tras el cajon */
+#drawer-bd { position:fixed; inset:0; z-index:1450; background:rgba(0,0,0,.5); display:none; }
+#drawer-bd.on { display:block; }
+
+/* Ficha => hoja inferior deslizable con el dedo */
+#ficha { position:fixed; left:0; right:0; bottom:0; top:auto; width:100%;
+  max-height:62vh; z-index:1600; transform:translateY(110%); transition:transform .28s ease;
+  overflow-y:auto; -webkit-overflow-scrolling:touch;
+  border-radius:18px 18px 0 0; box-shadow:0 -4px 26px rgba(0,0,0,.55); }
+#ficha.on { transform:translateY(0); }
+#ficha .fh { position:sticky; top:0; z-index:2; }
+
+/* Boton Salir del cajon */
+#sb-logout { margin:14px 12px; padding:11px; text-align:center; border-radius:8px; cursor:pointer;
+  background:rgba(231,76,60,.12); border:1px solid var(--red); color:var(--red); font-weight:600; }
+
+/* Ocultar vistas de escritorio en movil */
+#tbl-v, #cable-v, #users-v { display:none !important; }
+
+/* Panel de datos offline (en el cajon) */
+.off-panel { padding:12px; border-bottom:1px solid var(--line); display:flex; flex-direction:column; gap:8px; }
+.off-title { font-family:var(--mono); font-size:11px; color:var(--t1); letter-spacing:1px; }
+.off-meta { font-size:11px; color:var(--t2); line-height:1.7; background:var(--bg0); padding:8px 10px; border-radius:6px; border:1px solid var(--line); word-break:break-word; }
+.off-btn { padding:11px; border-radius:8px; font-weight:600; font-size:13px; cursor:pointer; border:1px solid; text-align:center; }
+.off-btn.est { background:rgba(79,142,247,.14); border-color:var(--acc); color:var(--acc); }
+.off-btn.cable { background:rgba(155,89,182,.14); border-color:var(--pur); color:var(--pur); }
+.off-btn.dl { background:rgba(46,204,113,.14); border-color:var(--grn); color:var(--grn); }
+.off-status { font-size:11px; line-height:1.5; display:none; }
+
+/* Boton de icono Importar en la barra */
+#btn-import { display:flex; align-items:center; justify-content:center; width:42px; height:42px;
+  font-size:18px; border-radius:10px; flex-shrink:0; padding:0;
+  background:rgba(79,142,247,.14); border:1px solid var(--acc); color:var(--acc); cursor:pointer; }
+
+/* Hoja inferior de Importar (bottom sheet) */
+#off-bd { position:fixed; inset:0; z-index:1640; background:rgba(0,0,0,.5); display:none; }
+#off-bd.on { display:block; }
+#off-sheet { position:fixed; left:0; right:0; bottom:0; top:auto; width:100%;
+  max-height:78vh; z-index:1660; transform:translateY(110%); transition:transform .28s ease;
+  overflow-y:auto; -webkit-overflow-scrolling:touch; border-radius:18px 18px 0 0;
+  box-shadow:0 -4px 26px rgba(0,0,0,.55); background:var(--bg1); }
+#off-sheet.on { transform:translateY(0); }
+.off-sheet-h { position:sticky; top:0; z-index:2; display:flex; align-items:center; gap:8px;
+  padding:14px 16px; border-bottom:1px solid var(--line); background:var(--bg1); }
+.off-sheet-title { font-weight:700; font-size:15px; color:var(--t0); }
+.off-sheet-close { margin-left:auto; width:34px; height:34px; border-radius:8px; cursor:pointer;
+  background:transparent; border:1px solid var(--line2); color:var(--t1); font-size:15px; flex-shrink:0; }
+.off-sheet-body { padding:16px; display:flex; flex-direction:column; gap:10px; }
+.off-meta { font-size:12px; color:var(--t2); line-height:1.7; background:var(--bg0); padding:10px 12px; border-radius:8px; border:1px solid var(--line); word-break:break-word; }
+.off-btn { padding:13px; border-radius:10px; font-weight:600; font-size:14px; cursor:pointer; border:1px solid; text-align:center; }
+.off-btn.est { background:rgba(79,142,247,.14); border-color:var(--acc); color:var(--acc); }
+.off-btn.cable { background:rgba(155,89,182,.14); border-color:var(--pur); color:var(--pur); }
+.off-btn.dl { background:rgba(46,204,113,.14); border-color:var(--grn); color:var(--grn); margin-top:4px; }
+.off-status { font-size:12px; line-height:1.5; display:none; }
+
+/* Indicador de red (online/offline) */
+.net-badge { font-family:var(--mono); font-size:11px; padding:5px 10px; border-radius:20px;
+  white-space:nowrap; border:1px solid var(--line2); color:var(--t2); background:var(--bg1); flex-shrink:0; }
+.net-badge.on { color:var(--grn); border-color:var(--grn); }
+.net-badge.off { color:var(--t2); border-color:var(--line2); }
+.off-btn.net { background:rgba(46,204,113,.16); border-color:var(--grn); color:var(--grn); }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-ov">
+  <div class="lcard">
+    <div class="llogo">
+      <div class="brand">RRT</div>
+      <div class="sub">CONTROL DE ESTACIONES</div>
+    </div>
+    <label>USUARIO</label>
+    <input type="text" id="lu" placeholder="usuario" autocomplete="off">
+    <label>CONTRASENA</label>
+    <input type="password" id="lp" placeholder="contrasena">
+    <button class="btn-p full" id="btn-login" onclick="doLogin()">INGRESAR</button>
+    <div id="lerr">Credenciales incorrectas</div>
+  </div>
+</div>
+
+<!-- LOADING -->
+<div id="load-ov">
+  <div class="spin"></div>
+  <div style="font-family:var(--mono);font-size:11px;color:var(--t2);letter-spacing:2px">PROCESANDO...</div>
+</div>
+
+<!-- IMPORT MODAL -->
+<div id="import-bg" class="modal-bg">
+  <div class="modal">
+    <h3>Importar / Actualizar datos</h3>
+    <div class="drop-zone" id="drop-zone" ondragover="dzOver(event)" ondragleave="dzLeave()" ondrop="dzDrop(event)">
+      <div class="dicon">&#128196;</div>
+      <p>
+        <strong>Arrastra tu archivo CSV aqui</strong><br>
+        o <button onclick="document.getElementById('import-file').click()" style="background:none;border:none;color:var(--acc);cursor:pointer;font-size:13px;font-family:var(--font);text-decoration:underline">haz clic para seleccionarlo</button><br><br>
+        Descarga desde Google Sheets:<br>
+        <span style="color:var(--t1)">Archivo &rarr; Descargar &rarr; CSV</span><br><br>
+        O carga un backup exportado previamente desde este panel
+      </p>
+    </div>
+    <input type="file" id="import-file" accept=".csv,text/csv" style="display:none">
+    <div id="import-log"></div>
+    <div class="ifooter">
+      <small id="import-count">Sin datos cargados</small>
+      <div style="display:flex;gap:8px">
+        <button class="btn-g" onclick="closeImport()">CANCELAR</button>
+        <button class="btn-p" id="import-ok" style="display:none" onclick="confirmImport()">GUARDAR DATOS</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FORM MODAL -->
+<div id="form-bg" class="modal-bg">
+  <div class="modal">
+    <h3 id="form-title">Nueva Estacion</h3>
+    <div class="form-grid">
+      <div class="fsec">DATOS BASICOS</div>
+      <div class="fgroup full"><label>LOCALIDAD *</label><input id="f-loc" placeholder="Nombre de la localidad"></div>
+      <div class="fgroup"><label>DEPARTAMENTO *</label>
+        <select id="f-dep">
+          <option value="">Seleccionar...</option>
+          <optgroup label="NORTE">
+            <option>Tumbes</option><option>Piura</option><option>Lambayeque</option>
+            <option>La Libertad</option><option>Cajamarca</option><option>Cajabamba</option>
+            <option>Amazonas</option><option>San Martin</option><option>Ancash</option>
+          </optgroup>
+          <optgroup label="CENTRO">
+            <option>Lima</option><option>Ica</option><option>Ayacucho</option>
+            <option>Huancavelica</option><option>Junin</option><option>Pasco</option>
+            <option>Huanuco</option><option>Ucayali</option><option>Loreto</option>
+          </optgroup>
+          <optgroup label="SUR">
+            <option>Arequipa</option><option>Apurimac</option><option>Cusco</option>
+            <option>Puno</option><option>Tacna</option><option>Moquegua</option>
+            <option>Madre de Dios</option>
+          </optgroup>
+        </select>
+      </div>
+      <div class="fgroup"><label>BANDA *</label>
+        <select id="f-ban">
+          <option value="">Seleccionar...</option>
+          <option>FM</option><option>AM</option><option>VHF</option><option>UHF</option><option>OM</option>
+        </select>
+      </div>
+      <div class="fgroup"><label>FRECUENCIA</label><input id="f-fre" placeholder="ej: 97.3 MHz"></div>
+      <div class="fgroup"><label>ESTADO</label>
+        <select id="f-est">
+          <option value="N.I">N.I - No Instalada</option>
+          <option value="A.A">A.A - Al Aire</option>
+          <option value="F.A">F.A - Fuera del Aire</option>
+        </select>
+      </div>
+      <div class="fgroup"><label>PRESBITERIO</label><input id="f-pre" placeholder="Numero o nombre"></div>
+      <div class="fsec">UBICACION</div>
+      <div class="fgroup"><label>LATITUD</label><input id="f-lat" placeholder="-12.0464" type="number" step="any"></div>
+      <div class="fgroup"><label>LONGITUD</label><input id="f-lng" placeholder="-77.0428" type="number" step="any"></div>
+      <div class="fsec">INFO ADICIONAL</div>
+      <div class="fgroup"><label>RESPONSABLE</label><input id="f-res" placeholder="Nombre"></div>
+      <div class="fgroup"><label>NIVEL</label><input id="f-niv" placeholder="ej: Nivel 1"></div>
+      <div class="fgroup full"><label>INCIDENCIAS / BITACORA</label><textarea id="f-inc" placeholder="Registro de incidencias..."></textarea></div>
+      <div class="fgroup full"><label>OBSERVACIONES</label><textarea id="f-obs" placeholder="Notas adicionales..." style="min-height:55px"></textarea></div>
+    </div>
+    <div class="mfooter">
+      <button class="btn-g" onclick="closeForm()">CANCELAR</button>
+      <button class="btn-p" onclick="saveStation()">GUARDAR</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM -->
+<div id="confirm-bg">
+  <div class="confirm-card">
+    <p id="confirm-msg">Confirmar accion</p>
+    <div class="cbtns">
+      <button class="btn-g" onclick="confirmNo()">CANCELAR</button>
+      <button class="btn-d" onclick="confirmYes()">ELIMINAR</button>
+    </div>
+  </div>
+</div>
+
+<!-- INCIDENCIA MODAL -->
+<div id="inc-bg" style="position:fixed;inset:0;z-index:820;background:rgba(0,0,0,.8);display:none;align-items:center;justify-content:center">
+  <div style="background:var(--bg1);border:1px solid var(--line2);border-radius:14px;padding:26px;width:500px;max-width:95vw">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:6px;color:var(--t0)">+ Registrar Incidencia</h3>
+    <div style="font-size:12px;color:var(--t2);font-family:var(--mono);margin-bottom:16px" id="inc-station-name"></div>
+    <div style="font-size:11px;color:var(--t1);font-family:var(--mono);letter-spacing:.5px;margin-bottom:8px;text-transform:uppercase">Actualizar estado</div>
+    <div class="inc-state-row">
+      <button class="inc-state-btn aa" data-est="A.A">&#9679; Al Aire</button>
+      <button class="inc-state-btn fa" data-est="F.A">&#9679; Fuera del Aire</button>
+      <button class="inc-state-btn ni" data-est="N.I">&#9679; No Instalada</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:14px">
+      <label style="font-size:11px;color:var(--t1);font-family:var(--mono);letter-spacing:.5px;text-transform:uppercase">Descripcion *</label>
+      <textarea id="inc-text" rows="4" placeholder="Describe la incidencia o novedad..." style="padding:10px 12px;background:var(--bg2);border:1px solid var(--line2);border-radius:var(--r);color:var(--t0);font-family:var(--font);font-size:13px;outline:none;resize:vertical;line-height:1.5;width:100%"></textarea>
+    </div>
+    <div style="font-size:11px;color:var(--t2);font-family:var(--mono);margin-bottom:16px">
+      Registrado por: <span style="color:var(--acc)" id="inc-user-name"></span> &nbsp;|&nbsp; <span id="inc-date-preview"></span>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px">
+      <button class="btn-ghost" onclick="closeIncModal()">CANCELAR</button>
+      <button class="btn-prim" onclick="saveIncidencia()">GUARDAR</button>
+    </div>
+  </div>
+</div>
+
+<!-- CABLEOPERADOR FORM MODAL -->
+<div id="cform-bg">
+  <div class="cform-card">
+    <h3 id="cform-title">Nuevo Cableoperador</h3>
+    <div class="cform-grid">
+      <div class="cform-field"><label>Nombre comercial *</label><input type="text" id="cf-nombre"></div>
+      <div class="cform-field"><label>Razon social</label><input type="text" id="cf-razon"></div>
+      <div class="cform-field"><label>Documentacion</label><input type="text" id="cf-doc"></div>
+      <div class="cform-field"><label>Pais *</label><input type="text" id="cf-pais"></div>
+      <div class="cform-field"><label>Departamento</label><input type="text" id="cf-dpto"></div>
+      <div class="cform-field"><label>Distrito</label><input type="text" id="cf-distrito"></div>
+      <div class="cform-field"><label>Provincia</label><input type="text" id="cf-provincia"></div>
+      <div class="cform-field"><label>Canal</label><input type="text" id="cf-canal"></div>
+      <div class="cform-field"><label>Estado</label><input type="text" id="cf-estado" placeholder="Nueva 2026 / ACTUALIZADA..."></div>
+      <div class="cform-field"><label>Fecha de publicacion</label><input type="text" id="cf-fecha"></div>
+      <div class="cform-field"><label>Telefono</label><input type="text" id="cf-tel"></div>
+      <div class="cform-field"><label>Contacto</label><input type="text" id="cf-contacto"></div>
+      <div class="cform-field full"><label>Correo</label><input type="text" id="cf-correo"></div>
+      <div class="cform-field full"><label>Notas</label><textarea id="cf-notas" rows="2"></textarea></div>
+    </div>
+    <div class="cform-actions">
+      <button class="btn-ghost" onclick="closeCableForm()">CANCELAR</button>
+      <button class="btn-prim" onclick="saveCableOp()">GUARDAR</button>
+    </div>
+  </div>
+</div>
+
+<!-- CABLEOPERADOR IMPORT MODAL -->
+<div id="cimport-bg" class="modal-bg">
+  <div class="modal">
+    <h3>Importar / Actualizar cableoperadores</h3>
+    <div class="drop-zone" id="cdrop-zone" ondragover="cdzOver(event)" ondragleave="cdzLeave()" ondrop="cdzDrop(event)">
+      <div class="dicon">&#128196;</div>
+      <p>
+        <strong>Arrastra el CSV de cableoperadores aqui</strong><br>
+        o <button onclick="document.getElementById('cimport-file').click()" style="background:none;border:none;color:var(--pur);cursor:pointer;font-size:13px;font-family:var(--font);text-decoration:underline">haz clic para seleccionarlo</button><br><br>
+        <span style="color:#f0b429;font-size:11px">&#9888; Reemplaza los cableoperadores actuales</span>
+      </p>
+    </div>
+    <input type="file" id="cimport-file" accept=".csv,text/csv" style="display:none" onchange="cimportFile(this)">
+    <div id="cimport-log" style="margin-top:14px;padding:14px;background:var(--bg0);border-radius:var(--r);font-size:12px;font-family:var(--mono);color:var(--t2);line-height:1.8;min-height:40px;display:none;white-space:pre-wrap;border:1px solid var(--line)"></div>
+    <div class="import-footer" style="display:flex;justify-content:space-between;align-items:center;margin-top:16px">
+      <small id="cimport-count" style="font-size:11px;font-family:var(--mono);color:var(--t2)"></small>
+      <div style="display:flex;gap:8px">
+        <button class="btn-ghost" onclick="closeCableImport()">CANCELAR</button>
+        <button class="btn-prim" id="cimport-ok" style="display:none" onclick="confirmCableImport()">GUARDAR DATOS</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ACERCA DE MODAL -->
+<div id="about-bg" onclick="if(event.target===this)closeAbout()">
+  <div class="about-card">
+    <h2><span class="ico">&#9432;</span> Acerca de</h2>
+    <div class="about-sub">Red Nacional R&amp;T &middot; Unidad Tecnica &middot; Bethel</div>
+
+    <p>Esta plataforma ha sido desarrollada con el proposito de fortalecer la gestion operativa del Area de Telecomunicaciones de la Unidad Tecnica, proporcionando herramientas para el registro y seguimiento de estaciones, control de incidencias, consulta de fichas tecnicas y visualizacion geografica de la Red Nacional mediante paneles de control y mapas interactivos.</p>
+
+    <p>Su objetivo es optimizar los procesos de monitoreo, supervision y toma de decisiones, facilitando el acceso a informacion actualizada sobre el estado de las estaciones, contribuyendo asi a una atencion mas eficiente de las incidencias y al fortalecimiento de la infraestructura de transmision.</p>
+
+    <h3>Autor</h3>
+    <div class="about-author">
+      <div class="av">MA</div>
+      <div>
+        <div class="an">Manuel Alvarado Baldeon</div>
+        <div class="ar">Desarrollo y mantenimiento</div>
+      </div>
+    </div>
+
+    <h3>Colabora con el proyecto</h3>
+    <div class="about-qr-wrap">
+      <img src="data:image/png;base64,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" alt="Codigo QR de colaboracion Yape - Manuel Alvarado Baldeon">
+      <div class="about-qr-txt">
+        <div class="qt">Si esta plataforma es de utilidad para usted, puede colaborar con el desarrollo, mejora continua y mantenimiento del proyecto mediante este codigo QR de Yape.</div>
+        <div class="qn">Manuel Alvarado Baldeon</div>
+      </div>
+    </div>
+
+    <h3>Contacto</h3>
+    <p style="margin-bottom:6px">Sus sugerencias, observaciones y comentarios son bienvenidos. Puede escribir a:</p>
+    <a class="about-mail" href="mailto:malvarado@betheltv.tv">&#9993; malvarado@betheltv.tv</a>
+
+    <div class="about-foot">Gracias por contribuir al fortalecimiento de las herramientas tecnologicas que apoyan la gestion y operacion de nuestra red de Bethel.</div>
+
+    <div class="about-close-row"><button onclick="closeAbout()">CERRAR</button></div>
+  </div>
+</div>
+
+<!-- USER FORM MODAL -->
+<div id="uform-bg">
+  <div class="uform-card">
+    <h3 id="uform-title">Nuevo usuario</h3>
+    <div class="uform-field"><label>Nombre completo</label><input type="text" id="uf-name" placeholder="Ej. Juan Perez"></div>
+    <div class="uform-field"><label>Usuario (para iniciar sesion)</label><input type="text" id="uf-user" placeholder="Ej. jperez"></div>
+    <div class="uform-field"><label>Contrasena</label><input type="text" id="uf-pass" placeholder="Contrasena"></div>
+    <div class="uform-field">
+      <label>Rol</label>
+      <select id="uf-role" onchange="updateRoleDesc()">
+        <option value="admin">Administrador</option>
+        <option value="gestion">Gestion</option>
+        <option value="cable">Distribuidor</option>
+        <option value="consulta">Consulta</option>
+        <option value="invitado">Invitado</option>
+        <option value="superadmin">Superadmin</option>
+      </select>
+      <div class="role-desc" id="uf-role-desc"></div>
+    </div>
+    <div class="uform-actions">
+      <button class="btn-ghost" onclick="closeUserForm()">CANCELAR</button>
+      <button class="btn-prim" onclick="saveUser()">GUARDAR</button>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app" style="display:none">
+  <div id="drawer-bd" onclick="toggleSB()"></div>
+  <div id="sb">
+    <div class="sbh">
+      <div class="brow-top">
+        <div class="bdot"></div>
+        <div><div class="bname">RED R&amp;T</div><div class="bsub">MONITOREO</div></div>
+        <button id="sb-close" onclick="toggleSB()" title="Ocultar menu">&#x2715;</button>
+      </div>
+      <button class="btn-new admin-only" onclick="openForm(null)">+ NUEVA</button>
+    </div>
+    <div class="stats">
+      <div class="sbox s-aa on" id="box-aa" onclick="setSF('AA')"><div class="v" id="c-aa">0</div><div class="l">AL AIRE</div></div>
+      <div class="sbox s-fa on" id="box-fa" onclick="setSF('FA')"><div class="v" id="c-fa">0</div><div class="l">FUERA</div></div>
+      <div class="sbox s-ni on" id="box-ni" onclick="setSF('NI')"><div class="v" id="c-ni">0</div><div class="l">N. INST.</div></div>
+    </div>
+    <div class="ztabs">
+      <button class="ztab on" data-z="ALL" onclick="setZone('ALL')">TODAS</button>
+      <button class="ztab" data-z="NORTE" onclick="setZone('NORTE')">NORTE</button>
+      <button class="ztab" data-z="CENTRO" onclick="setZone('CENTRO')">CENTRO</button>
+      <button class="ztab" data-z="SUR" onclick="setZone('SUR')">SUR</button>
+    </div>
+    <div class="bprow">
+      <button class="bpill-f fm on" data-b="FM" onclick="toggleB(this)">FM</button>
+      <button class="bpill-f am on" data-b="AM" onclick="toggleB(this)">AM</button>
+      <button class="bpill-f vhf on" data-b="VHF" onclick="toggleB(this)">VHF</button>
+      <button class="bpill-f uhf on" data-b="UHF" onclick="toggleB(this)">UHF</button>
+      <button class="bpill-f om on" data-b="OM" onclick="toggleB(this)">OM</button>
+      <button class="bpill-f cable" id="pill-cable" onclick="toggleCable(this)" title="Mostrar cableoperadores de Peru">CABLE</button>
+    </div>
+    <div class="srch"><input type="text" id="srch" placeholder="Buscar localidad, departamento..." oninput="applyF()"></div>
+    <div id="stlist"></div>
+    <button id="sb-logout" class="visor-only" onclick="logout()">Salir</button>
+  </div>
+    <div id="ficha">
+      <div class="fh">
+        <div class="fn" id="fn"></div>
+        <div class="fbtns">
+          <button class="freg" onclick="openIncModal()">+ Incidencia</button>
+          <button class="fedit admin-only" onclick="editSel()">&#9998; Editar</button>
+          <button class="fdel admin-only" onclick="delSel()">&#x2715; Borrar</button>
+          <button class="fclose" onclick="closeFicha()">&#x2715;</button>
+        </div>
+      </div>
+      <div class="fg" id="fg"></div>
+    </div>
+
+  <div id="off-bd" onclick="closeOffSheet()"></div>
+  <div id="off-sheet">
+    <div class="off-sheet-h">
+      <div class="off-sheet-title">&#128194; Importar datos</div>
+      <button class="off-sheet-close" onclick="closeOffSheet()">&#x2715;</button>
+    </div>
+    <div class="off-sheet-body">
+      <div id="off-meta" class="off-meta">Cargando...</div>
+      <input type="file" id="off-est-file" accept=".csv,text/csv" style="display:none" onchange="offEstFile(this.files[0]); this.value='';">
+      <input type="file" id="off-cable-file" accept=".csv,text/csv" style="display:none" onchange="offCableFile(this.files[0]); this.value='';">
+      <button class="off-btn net" onclick="cargarDesdeGitHub(true)">&#8635; Actualizar en linea (GitHub)</button>
+      <button class="off-btn est" onclick="document.getElementById('off-est-file').click()">&#128194; Cargar Estaciones (CSV)</button>
+      <button class="off-btn cable" onclick="document.getElementById('off-cable-file').click()">&#128194; Cargar Cableros (CSV)</button>
+      <button class="off-btn dl" onclick="offDownload()">&#8615; Descargar ultima version</button>
+      <div id="off-status" class="off-status"></div>
+    </div>
+  </div>
+  <div id="main">
+    <div id="topbar">
+      <button id="tog" onclick="toggleSB()">&#9776;</button>
+      <button id="btn-import" onclick="openOffSheet()" title="Importar / descargar datos">&#128194;</button>
+      <div id="net-badge" class="net-badge">⏳ --</div>
+      <div class="topright">
+        <div class="vtabs">
+          <button class="vt about-btn" id="t-about" onclick="openAbout()" title="Acerca de esta plataforma">&#9432; Acerca de</button>
+          <button class="vt on" id="t-map" onclick="setView('map')">MAPA</button>
+          <button class="vt" id="t-tbl" onclick="setView('table')">ESTACIONES</button>
+          <button class="vt" id="t-cable" onclick="setView('cable')">CABLEOPERADORES</button>
+          <button class="vt" id="t-users" onclick="setView('users')" style="border-color:var(--pur);color:var(--pur)">&#128100; USUARIOS</button>
+        </div>
+        <div class="map-style-tabs" id="map-style-tabs">
+          <button class="map-style-btn on" data-style="dark" onclick="setMapStyle('dark')" title="Vista oscura">&#9681; Oscuro</button>
+          <button class="map-style-btn" data-style="light" onclick="setMapStyle('light')" title="Vista clara">&#9728; Claro</button>
+          <button class="map-style-btn" data-style="sat" onclick="setMapStyle('sat')" title="Satelital al acercar (zoom 13+)">&#x1F6F0; Sat</button>
+        </div>
+        <div id="conbar">Sistema listo</div>
+        <button class="tbtn imp admin-only" onclick="openImport()">&#8595; Importar</button>
+        <button class="tbtn exp admin-only" onclick="exportCSV()">&#8593; Exportar</button>
+        <button class="tbtn admin-only" onclick="openForm(null)">+ Nueva</button>
+        <button class="tbtn cable-act" onclick="openCableForm(null)" style="background:rgba(155,89,182,.15);border-color:var(--pur);color:var(--pur)">+ Cablero</button>
+        <button class="tbtn cable-act" onclick="openCableImport()" style="background:rgba(155,89,182,.12);border-color:var(--pur);color:var(--pur)">&#8595; Imp. cable</button>
+        <button class="tbtn cable-act" onclick="exportCableCSV()" style="background:rgba(155,89,182,.12);border-color:var(--pur);color:var(--pur)">&#8593; Exp. cable</button>
+        <button class="tbtn" onclick="logout()">Salir</button>
+      </div>
+    </div>
+    <div id="map-v">
+      <div id="map"></div>
+      <div id="legend">
+        <div class="leg"><div class="ldot" style="background:var(--grn)"></div>Al Aire (A.A)</div>
+        <div class="leg"><div class="ldot" style="background:var(--red)"></div>Fuera del Aire (F.A)</div>
+        <div class="leg"><div class="ldot" style="background:var(--yel)"></div>No Instalada (N.I)</div>
+      </div>
+    </div>
+    <div id="tbl-v">
+      <table class="dtbl">
+        <thead><tr>
+          <th style="width:44px">N°</th>
+          <th>LOCALIDAD</th>
+          <th>DPTO.</th>
+          <th style="width:60px">BANDA</th>
+          <th style="width:72px">FREC.</th>
+          <th style="width:60px">PRESB.</th>
+          <th style="width:64px">ESTADO</th>
+          <th style="width:68px">ZONA</th>
+          <th id="th-acciones" style="width:160px;display:none">ACCIONES</th>
+          <th style="width:116px" id="th-registros">REGISTROS</th>
+        </tr></thead>
+        <tbody id="tb"></tbody>
+      </table>
+    </div>
+    <!-- VISTA CABLEOPERADORES -->
+    <div id="cable-v">
+      <div class="cable-toolbar">
+        <input type="text" id="cable-search" class="csearch" placeholder="Buscar nombre, pais, departamento, canal..." oninput="renderCable()">
+        <select id="cable-pais" onchange="renderCable()"><option value="">Todos los paises</option></select>
+        <span class="cable-count" id="cable-count"></span>
+      </div>
+      <table class="ctbl">
+        <thead><tr>
+          <th>NOMBRE COMERCIAL</th>
+          <th>RAZON SOCIAL</th>
+          <th>DOC.</th>
+          <th>PAIS</th>
+          <th>DEPARTAMENTO</th>
+          <th>DISTRITO</th>
+          <th>PROVINCIA</th>
+          <th>CANAL</th>
+          <th>ESTADO</th>
+          <th>F. PUBL.</th>
+          <th>TELEFONO</th>
+          <th>CONTACTO</th>
+          <th>CORREO</th>
+          <th>NOTAS</th>
+          <th class="cable-act" id="cth-acc">ACCIONES</th>
+        </tr></thead>
+        <tbody id="cable-tb"></tbody>
+      </table>
+    </div>
+    <!-- VISTA USUARIOS -->
+    <div id="users-v">
+      <div class="users-toolbar">
+        <h3>&#128100; Gestion de Usuarios</h3>
+        <button class="btn-adduser" onclick="openUserForm(null)">+ Nuevo usuario</button>
+      </div>
+      <table class="utbl">
+        <thead><tr>
+          <th>NOMBRE</th><th>USUARIO</th><th>CONTRASENA</th><th>ROL</th><th>PERMISOS</th><th style="width:140px">ACCIONES</th>
+        </tr></thead>
+        <tbody id="users-tb"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- HISTORIAL MODAL -->
+<div id="hist-bg">
+  <div class="hist-card">
+    <h3 id="hist-title">Historial de Incidencias</h3>
+    <div class="hist-subtitle" id="hist-subtitle"></div>
+    <div id="hist-body"></div>
+    <div style="display:flex;justify-content:flex-end;margin-top:16px">
+      <button class="btn-ghost" onclick="closeHist()">CERRAR</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// ═══════════════════════════════════════════════════════════
+//  LECTURA EN LINEA (GitHub) - version movil
+//  Si hay internet, baja el JSON publicado; si no, usa lo guardado.
+// ═══════════════════════════════════════════════════════════
+var GITHUB_DATA_URL='https://malvaradob-bethel.github.io/estaciones/publico.json';
+
+function offSetNet(estado, fecha){
+  // estado: 'online' | 'offline' | 'cargando'
+  var el=document.getElementById('net-badge'); if(!el) return;
+  if(estado==='online'){
+    el.innerHTML='\uD83D\uDFE2 En linea'+(fecha?(' \u00B7 '+fecha):'');
+    el.className='net-badge on';
+  } else if(estado==='offline'){
+    el.innerHTML='\u26AB Sin conexion';
+    el.className='net-badge off';
+  } else {
+    el.innerHTML='\u23F3 Conectando...';
+    el.className='net-badge';
+  }
+}
+
+function cargarDesdeGitHub(manual){
+  offSetNet('cargando');
+  if(manual) offStatus('Buscando datos en linea...');
+  fetch(GITHUB_DATA_URL, {cache:'no-store'})
+    .then(function(r){ if(!r.ok) throw new Error('http '+r.status); return r.json(); })
+    .then(function(doc){
+      if(doc && Array.isArray(doc.estaciones)){ ALL=doc.estaciones; saveDB(); }
+      if(doc && Array.isArray(doc.cableros)){ CABLE=doc.cableros; saveCable(); }
+      var fecha=(doc && doc.generado) ? String(doc.generado).substring(0,10) : null;
+      var meta=offGetMeta();
+      meta.online={ fecha:fecha, bajadoEl:new Date().toISOString() };
+      try{ localStorage.setItem('rrt_offline_meta', JSON.stringify(meta)); }catch(e){}
+      try{ updateStats(); applyF(); fillCablePaises(); renderCable(); }catch(e){}
+      offRenderMeta(); offSetNet('online', fecha);
+      if(manual) offStatus('\u2713 Datos en linea actualizados'+(fecha?(' ('+fecha+')'):'')+'.', false);
+    })
+    .catch(function(){
+      offSetNet('offline');
+      if(manual) offStatus('\u26A0 Sin conexion. Se muestran los ultimos datos guardados. Puedes cargar un CSV manualmente.', true);
+    });
+}
+
+
+function openOffSheet(){
+  offRenderMeta();
+  var bd=document.getElementById('off-bd'); if(bd) bd.classList.add('on');
+  var sh=document.getElementById('off-sheet'); if(sh) sh.classList.add('on');
+}
+function closeOffSheet(){
+  var bd=document.getElementById('off-bd'); if(bd) bd.classList.remove('on');
+  var sh=document.getElementById('off-sheet'); if(sh) sh.classList.remove('on');
+}
+
+
+// ═══════════════════════════════════════════════════════════
+//  MODO OFFLINE: carga de CSV locales (estaciones + cableros)
+//  Recuerda lo ultimo cargado y muestra nombre/fecha del archivo.
+// ═══════════════════════════════════════════════════════════
+var OFFLINE_DRIVE_URL='https://drive.google.com/drive/folders/1WqDkIuwCdxqXx82fsLqUWC0G2dYxPPc-?usp=sharing';
+
+function offStatus(msg, isErr){
+  var el=document.getElementById('off-status'); if(!el) return;
+  el.style.display=msg?'block':'none';
+  el.style.color=isErr?'var(--red)':'var(--grn)';
+  el.textContent=msg||'';
+}
+function offGetMeta(){ try{ return JSON.parse(localStorage.getItem('rrt_offline_meta')||'{}'); }catch(e){ return {}; } }
+function offParseDate(name){
+  var m=name.match(/(20\d{2})[-_]?(\d{2})[-_]?(\d{2})/);
+  if(m) return m[1]+'-'+m[2]+'-'+m[3];
+  m=name.match(/(\d{2})[-_](\d{2})[-_](20\d{2})/);
+  if(m) return m[3]+'-'+m[2]+'-'+m[1];
+  return null;
+}
+function offRenderMeta(){
+  var el=document.getElementById('off-meta'); if(!el) return;
+  var meta=offGetMeta();
+  function line(k,label){
+    var m=meta[k];
+    if(!m||!m.name) return label+': <span style="color:var(--t1)">(sin cargar)</span>';
+    return label+': '+m.name+(m.date?(' <span style="color:var(--grn)">['+m.date+']</span>'):'');
+  }
+  var on=meta.online&&meta.online.fecha?('\uD83C\uDF10 En linea: '+meta.online.fecha+'<br>'):'';
+  el.innerHTML=on+'\uD83D\uDCC4 '+line('est','Estaciones')+'<br>\uD83D\uDCE1 '+line('cable','Cableros');
+}
+function offSetMeta(kind, filename){
+  var meta=offGetMeta();
+  var nd=offParseDate(filename);
+  var prev=meta[kind];
+  var older=(prev && prev.date && nd && nd<prev.date) ? prev.date : null;
+  meta[kind]={ name:filename, date:nd, loadedAt:new Date().toISOString() };
+  try{ localStorage.setItem('rrt_offline_meta', JSON.stringify(meta)); }catch(e){}
+  offRenderMeta();
+  return older;
+}
+function offEstFile(file){
+  if(!file) return;
+  var rd=new FileReader();
+  rd.onload=function(){
+    try{
+      var rows=parseCSV(rd.result), st=[];
+      for(var i=0;i<rows.length;i++){ var s=rowToStation(rows[i]); if(s) st.push(s); }
+      if(!st.length){ offStatus('Ese archivo no parece la hoja de ESTACIONES.', true); return; }
+      ALL=st; saveDB();
+      var older=offSetMeta('est', file.name);
+      updateStats(); applyF();
+      offStatus((older?('\u26A0 Es anterior a la que tenias ('+older+'). '):'')+st.length+' estaciones cargadas.', !!older);
+    }catch(e){ offStatus('Error al leer estaciones: '+e.message, true); }
+  };
+  rd.readAsText(file);
+}
+function offCableFile(file){
+  if(!file) return;
+  var rd=new FileReader();
+  rd.onload=function(){
+    try{
+      var rows=parseCSV(rd.result), objs=[];
+      for(var i=0;i<rows.length;i++){ var o=cableRowToObj(rows[i]); if(o) objs.push(o); }
+      if(!objs.length){ offStatus('Ese archivo no parece la hoja de CABLEOPERADORES.', true); return; }
+      CABLE=objs; saveCable();
+      var older=offSetMeta('cable', file.name);
+      fillCablePaises(); renderCable();
+      offStatus((older?('\u26A0 Es anterior a la que tenias ('+older+'). '):'')+objs.length+' cableoperadores cargados.', !!older);
+    }catch(e){ offStatus('Error al leer cableros: '+e.message, true); }
+  };
+  rd.readAsText(file);
+}
+function offDownload(){ window.open(OFFLINE_DRIVE_URL, '_blank'); }
+
+
+// ═══════════════════════════════════════════════════════════
+//  LECTURA DESDE EL SERVIDOR (solo lectura - User / Invitado)
+//  Baja al entrar y con el boton "Actualizar". No sube nada.
+// ═══════════════════════════════════════════════════════════
+var LITE_LAST_UPDATE=null;
+function serverDisponible(){ return location.protocol==='http:' || location.protocol==='https:'; }
+function esVisorPuro(){ return can('map') && !can('stationsEdit') && !can('cableEdit') && !can('incidencias'); }
+
+function liteMarkUpdated(){
+  LITE_LAST_UPDATE=new Date();
+  var el=document.getElementById('lite-updated');
+  if(!el) return;
+  function p(n){ return (n<10?'0':'')+n; }
+  var d=LITE_LAST_UPDATE;
+  el.textContent='\uD83D\uDD52 Actualizado: '+p(d.getDate())+'/'+p(d.getMonth()+1)+'/'+d.getFullYear()+' '+p(d.getHours())+':'+p(d.getMinutes());
+  el.classList.add('flash'); setTimeout(function(){ el.classList.remove('flash'); }, 800);
+}
+
+function refreshFromServer(manual){
+  if(!serverDisponible()){
+    if(manual){ var el=document.getElementById('lite-updated'); if(el) el.textContent='\u26A0 Abre el panel desde el servidor (http://...)'; }
+    return;
+  }
+  fetch('/api/data', {cache:'no-store'}).then(function(r){ return r.json(); }).then(function(data){
+    if(!data || !data.ok) return;
+    if(Array.isArray(data.estaciones)){ ALL=data.estaciones; saveDB(); }
+    if(Array.isArray(data.cableros)){ CABLE=data.cableros; saveCable(); }
+    try{ updateStats(); applyF(); }catch(e){}
+    try{ fillCablePaises(); renderCable(); }catch(e){}
+    liteMarkUpdated();
+  }).catch(function(){ /* silencioso */ });
+}
+
+
+function openAbout(){ document.getElementById('about-bg').classList.add('on'); }
+function closeAbout(){ document.getElementById('about-bg').classList.remove('on'); }
+
+var PE_COORDS={"ABANCAY":[-13.6339,-72.8814],"ACOBAMBA":[-12.8422,-74.5719],"ACOMAYO":[-13.9189,-71.6833],"AGUAYTIA":[-9.0342,-75.5083],"AIJA":[-9.7844,-77.6119],"ALTO AMAZONAS":[-5.9011,-76.1086],"AMAZONAS":[-6.2294,-77.8694],"AMBO":[-10.1311,-76.2044],"ANCASH":[-9.5278,-77.5278],"ANDAHUAYLAS":[-13.6556,-73.3875],"ANGARAES":[-12.9817,-74.8119],"ANTA":[-13.4736,-72.1489],"ANTABAMBA":[-14.3667,-72.8833],"ANTONIO RAIMONDI":[-9.1836,-77.0319],"APURIMAC":[-13.6339,-72.8814],"AREQUIPA":[-16.3989,-71.5369],"ASCOPE":[-7.7144,-79.1083],"ASUNCION":[-9.1603,-77.2917],"ATALAYA":[-10.7333,-73.75],"AYABACA":[-4.6394,-79.7153],"AYACUCHO":[-13.1606,-74.2258],"AYAVIRI":[-14.8819,-70.5892],"AYMARAES":[-13.9256,-73.1553],"AZANGARO":[-14.9181,-70.1911],"BAGUA":[-5.6386,-78.5353],"BARRANCA":[-10.7511,-77.7611],"BELLAVISTA":[-7.0564,-76.5856],"BOLIVAR":[-7.1539,-77.7022],"BOLOGNESI":[-10.15,-77.15],"BONGARA":[-5.8942,-77.7969],"CAJABAMBA":[-7.6231,-78.0469],"CAJAMARCA":[-7.1594,-78.5156],"CAJATAMBO":[-10.3533,-76.9933],"CALCA":[-13.3325,-71.9519],"CAMANA":[-16.6228,-72.7111],"CANAS":[-14.3017,-71.4344],"CANCHIS":[-14.1831,-71.4089],"CANDARAVE":[-17.2678,-70.2483],"CANETE":[-13.0764,-76.3875],"CANGALLO":[-13.6317,-74.1444],"CANTA":[-11.4719,-76.6231],"CAPITAL METROPOLITANA":[-12.0464,-77.0428],"CARABAYA":[-14.0683,-70.4311],"CARAVELI":[-15.7725,-73.3644],"CARHUAZ":[-9.2819,-77.6469],"CARLOS FERMIN FITZCARRALD":[-9.0556,-77.2889],"CASMA":[-9.4739,-78.3075],"CASTILLA":[-15.7242,-72.4789],"CASTROVIRREYNA":[-13.2794,-75.3183],"CAYLLOMA":[-15.6394,-71.6064],"CELENDIN":[-6.8703,-78.1481],"CERRO DE PASCO":[-10.6833,-76.2567],"CHACHAPOYAS":[-6.2294,-77.8694],"CHANCHAMAYO":[-11.0547,-75.3211],"CHEPEN":[-7.2289,-79.4319],"CHICLAYO":[-6.7714,-79.8442],"CHIMBOTE":[-9.0853,-78.5911],"CHINCHA":[-13.4158,-76.1325],"CHINCHEROS":[-13.5225,-73.7183],"CHOTA":[-6.5564,-78.6481],"CHUCUITO":[-16.2131,-69.4561],"CHULUCANAS":[-5.0931,-80.1619],"CHUMBIVILCAS":[-14.4519,-72.0831],"CHURCAMPA":[-12.7417,-74.3881],"CONCEPCION":[-11.9194,-75.3131],"CONDESUYOS":[-15.8019,-72.8319],"CONDORCANQUI":[-4.5878,-77.8631],"CONTAMANA":[-7.3331,-75.0164],"CONTRALMIRANTE VILLAR":[-3.6842,-80.6869],"CONTUMAZA":[-7.3664,-78.8031],"CORONEL PORTILLO":[-8.3792,-74.5539],"CORONGO":[-8.5678,-77.9158],"COTABAMBAS":[-13.9442,-72.2858],"CUSCO":[-13.5183,-71.9781],"CUTERVO":[-6.3778,-78.8183],"CUZCO":[-13.5183,-71.9781],"DANIEL ALCIDES CARRION":[-10.4856,-76.5311],"DATEM DEL MARANON":[-4.6711,-76.5411],"DOS DE MAYO":[-9.8311,-76.7358],"EL COLLAO":[-16.0831,-69.6356],"EL DORADO":[-6.6158,-76.6914],"ESPINAR":[-14.7933,-71.4075],"FERRENAFE":[-6.6375,-79.7892],"GENERAL SANCHEZ CERRO":[-16.6133,-71.2267],"GRAN CHIMU":[-7.5256,-78.8475],"HUACAYBAMBA":[-9.0436,-76.9536],"HUACHO":[-11.1064,-77.605],"HUALGAYOC":[-6.7492,-78.6083],"HUALLAGA":[-6.9344,-76.7719],"HUAMALIES":[-9.4853,-76.7411],"HUAMANGA":[-13.1606,-74.2258],"HUANCA SANCOS":[-13.9186,-74.3333],"HUANCABAMBA":[-5.2394,-79.4511],"HUANCANE":[-15.2047,-69.7597],"HUANCAVELICA":[-12.7864,-74.9725],"HUANCAYO":[-12.0653,-75.2047],"HUANTA":[-12.9367,-74.2483],"HUANUCO":[-9.9306,-76.2406],"HUARAL":[-11.4961,-77.2081],"HUARAZ":[-9.5278,-77.5278],"HUARI":[-9.3344,-77.1722],"HUARMEY":[-10.0681,-78.1522],"HUAROCHIRI":[-11.8358,-76.3811],"HUAURA":[-11.1064,-77.605],"HUAYLAS":[-9.0494,-77.8136],"HUAYTARA":[-13.6033,-75.3533],"ICA":[-14.0678,-75.7286],"ILAVE":[-16.0831,-69.6356],"IQUITOS":[-3.7436,-73.2517],"ISLAY":[-17.0289,-72.015],"JAEN":[-5.7083,-78.8081],"JAUJA":[-11.7758,-75.5003],"JORGE BASADRE":[-17.6158,-70.7611],"JUANJUI":[-7.1783,-76.7289],"JULCAN":[-8.0519,-78.4842],"JULI":[-16.2131,-69.4561],"JULIACA":[-15.4953,-70.1311],"JUNIN":[-12.0653,-75.2047],"LA CONVENCION":[-12.8533,-72.6953],"LA LIBERTAD":[-8.1159,-79.0299],"LA MAR":[-13.0119,-73.9858],"LA OROYA":[-11.5217,-75.9011],"LAMAS":[-6.4258,-76.5178],"LAMBAYEQUE":[-6.7714,-79.8442],"LAMPA":[-15.3644,-70.3653],"LAURICOCHA":[-10.0211,-76.6711],"LEONCIO PRADO":[-9.2931,-75.9983],"LIMA":[-12.0464,-77.0428],"LOCUMBA":[-17.6158,-70.7611],"LORETO":[-3.7436,-73.2517],"LUCANAS":[-14.2881,-74.1236],"LUYA":[-6.1669,-77.9442],"MACUSANI":[-14.0683,-70.4311],"MADRE DE DIOS":[-12.5933,-69.1833],"MANU":[-12.4431,-70.8358],"MARANON":[-8.6364,-77.1189],"MARISCAL CACERES":[-7.1783,-76.7289],"MARISCAL LUZURIAGA":[-8.9228,-77.3556],"MARISCAL NIETO":[-17.1936,-70.9333],"MARISCAL RAMON CASTILLA":[-3.9019,-70.5111],"MAYNAS":[-3.7436,-73.2517],"MELGAR":[-14.8819,-70.5892],"MOHO":[-15.3611,-69.4983],"MOLLENDO":[-17.0289,-72.015],"MOQUEGUA":[-17.1936,-70.9333],"MORROPON":[-5.0931,-80.1619],"MOYOBAMBA":[-6.0342,-76.9717],"NAUTA":[-4.5131,-73.5758],"NAZCA":[-14.8311,-74.9381],"OCROS":[-10.4011,-77.3975],"OTUZCO":[-7.9014,-78.5678],"OYON":[-10.6681,-76.7719],"PACASMAYO":[-7.4006,-79.4411],"PACHITEA":[-9.9197,-75.9967],"PADRE ABAD":[-9.0342,-75.5083],"PAITA":[-5.0894,-81.1144],"PALLASCA":[-8.4111,-78.0167],"PALPA":[-14.5336,-75.1856],"PARINACOCHAS":[-15.0683,-73.8314],"PARURO":[-13.7628,-71.8483],"PASCO":[-10.6833,-76.2567],"PATAZ":[-7.7317,-77.5911],"PAUCAR DEL SARA SARA":[-15.2817,-73.3386],"PAUCARTAMBO":[-13.3075,-71.5958],"PICOTA":[-6.9197,-76.3314],"PIURA":[-5.1944,-80.6328],"POMABAMBA":[-8.8211,-77.4611],"PTO. MALDONADO":[-12.5933,-69.1833],"PUCALLPA":[-8.3792,-74.5539],"PUERTO INCA":[-9.3811,-74.9658],"PUERTO MALDONADO":[-12.5933,-69.1833],"PUNO":[-15.8422,-70.0278],"PURUS":[-9.9511,-70.7111],"QUISPICANCHI":[-13.6331,-71.7411],"RECUAY":[-9.7214,-77.4561],"REQUENA":[-5.0564,-73.8556],"RIOJA":[-6.0594,-77.1681],"RODRIGUEZ DE MENDOZA":[-6.3942,-77.4858],"SAN ANTONIO DE PUTINA":[-14.9131,-69.8711],"SAN IGNACIO":[-5.1458,-79.0019],"SAN JOSE DE SISA":[-6.6158,-76.6914],"SAN MARCOS":[-7.3347,-78.1681],"SAN MARTIN":[-6.0342,-76.9717],"SAN MIGUEL":[-7.0003,-78.8525],"SAN PABLO":[-7.1153,-78.8242],"SAN ROMAN":[-15.4953,-70.1311],"SANCHEZ CARRION":[-7.8136,-78.0469],"SANDIA":[-14.3356,-69.4583],"SANTA":[-9.0853,-78.5911],"SANTIAGO DE CHUCO":[-8.1422,-78.1739],"SAPOSOA":[-6.9344,-76.7719],"SATIPO":[-11.2522,-74.6386],"SIHUAS":[-8.5564,-77.6319],"SUCRE":[-14.0094,-73.7375],"SULLANA":[-4.9039,-80.6853],"TACNA":[-18.0142,-70.2511],"TALARA":[-4.5772,-81.2719],"TAMBOPATA":[-12.5933,-69.1833],"TARAPOTO":[-6.4897,-76.3658],"TARMA":[-11.4189,-75.6897],"TINGO MARIA":[-9.2931,-75.9983],"TRUJILLO":[-8.1159,-79.0299],"TUMBES":[-3.5669,-80.4517],"UCAYALI":[-8.3792,-74.5539],"VICTOR FAJARDO":[-13.6783,-74.015],"YAULI":[-11.5217,-75.9011],"YURIMAGUAS":[-5.9011,-76.1086]};
+var CABLE_ON=false;
+
+// ═══════════════════════════════════════════════════════
+//  COLUMNAS EXACTAS — orden real de la hoja ESTACIONES:
+//  0=nº  1=LOCALIDAD  2=DPTO.  3=BANDA  4=FREC.  5=PRESB.
+//  6=F.A  7=INCIDENCIAS  8=MOTIVO  9=OBSERVACION  10=ID
+//  11=RESPONSABLE  12=NIVEL  13=PRESUP S/.  14=PRESUP $
+//  15=LAT  16=LNG  17=GMS  18=ID(dup)
+// ═══════════════════════════════════════════════════════
+var C = {
+  num:0, loc:1, dep:2, ban:3, fre:4, pre:5,
+  est:6, inc:7, mot:8, obs:9, id:10,
+  res:11, niv:12, prs:13, prd:14,
+  lat:15, lng:16
+};
+
+// detectColumns: ajusta C si los encabezados del CSV difieren
+function norm(s){ return (s||'').toLowerCase().trim().replace(/[^a-z0-9]/g,''); }
+function detectColumns(headers){
+  var h = headers.map(norm);
+  function fi(names){
+    for(var i=0;i<names.length;i++){ var idx=h.indexOf(names[i]); if(idx>=0) return idx; }
+    return -1;
+  }
+  var r;
+  r=fi(['localidad','loc']);          if(r>=0) C.loc=r;
+  r=fi(['dpto','departamento','dep']); if(r>=0) C.dep=r;
+  r=fi(['banda']);                    if(r>=0) C.ban=r;
+  r=fi(['frec','frecuencia']);        if(r>=0) C.fre=r;
+  r=fi(['presb','presbiterio']);      if(r>=0) C.pre=r;
+  r=fi(['fa','estado']);              if(r>=0) C.est=r;
+  r=fi(['incidencias']);              if(r>=0) C.inc=r;
+  r=fi(['motivo']);                   if(r>=0) C.mot=r;
+  r=fi(['observacion','observaciones']); if(r>=0) C.obs=r;
+  r=fi(['id']);                       if(r>=0) C.id=r;
+  r=fi(['responsable']);              if(r>=0) C.res=r;
+  r=fi(['nivel']);                    if(r>=0) C.niv=r;
+  r=fi(['lat','latitud']);            if(r>=0) C.lat=r;
+  r=fi(['lng','lon','longitud']);     if(r>=0) C.lng=r;
+  console.log('Cols: LAT='+C.lat+' LNG='+C.lng+' EST='+C.est+' BAN='+C.ban);
+}
+
+var ZONA_MAP = {
+  // NORTE
+  'Tumbes':'NORTE','Piura':'NORTE','Lambayeque':'NORTE','La Libertad':'NORTE',
+  'Cajamarca':'NORTE','Cajabamba':'NORTE','Amazonas':'NORTE',
+  'San Martin':'NORTE','San Martín':'NORTE',
+  'Ancash':'NORTE',
+  // CENTRO
+  'Lima':'CENTRO','Ica':'CENTRO','Ayacucho':'CENTRO','Huancavelica':'CENTRO',
+  'Junin':'CENTRO','Junín':'CENTRO','Pasco':'CENTRO',
+  'Huanuco':'CENTRO','Huánuco':'CENTRO',
+  'Ucayali':'CENTRO','Loreto':'CENTRO',
+  // SUR
+  'Arequipa':'SUR','Apurimac':'SUR','Aprímac':'SUR',
+  'Cusco':'SUR','Puno':'SUR',
+  'Tacna':'SUR','Moquegua':'SUR','Madre de Dios':'SUR'
+};
+// Lookup with accent-insensitive fallback
+function getZona(dep){
+  if(!dep) return 'OTRO';
+  if(ZONA_MAP[dep]) return ZONA_MAP[dep];
+  // Try accent-normalized version
+  var norm = dep.normalize('NFD').replace(/[̀-ͯ]/g,'');
+  for(var k in ZONA_MAP){
+    if(k.normalize('NFD').replace(/[̀-ͯ]/g,'') === norm) return ZONA_MAP[k];
+  }
+  return 'OTRO';
+}
+
+// ── ROLES Y PERMISOS ──
+var ROLE_NAMES = {
+  superadmin:'Superadmin', admin:'Administrador', gestion:'Gestion',
+  cable:'Distribuidor', consulta:'Consulta', invitado:'Invitado'
+};
+// Permisos por rol
+var ROLE_PERMS = {
+  superadmin:{ map:0, stationsView:0, stationsEdit:0, incidencias:0, cableTable:0, cableEdit:0, cableMap:0, users:1 },
+  admin:     { map:1, stationsView:1, stationsEdit:1, incidencias:1, cableTable:1, cableEdit:1, cableMap:1, users:0 },
+  gestion:   { map:1, stationsView:1, stationsEdit:0, incidencias:1, cableTable:1, cableEdit:0, cableMap:1, users:0 },
+  cable:     { map:1, stationsView:1, stationsEdit:0, incidencias:0, cableTable:1, cableEdit:1, cableMap:1, users:0 },
+  consulta:  { map:1, stationsView:1, stationsEdit:0, incidencias:0, cableTable:0, cableEdit:0, cableMap:1, users:0 },
+  invitado:  { map:1, stationsView:0, stationsEdit:0, incidencias:0, cableTable:0, cableEdit:0, cableMap:0, users:0 }
+};
+function can(p){ var r=CUR_USER&&CUR_USER.role; return !!(ROLE_PERMS[r]&&ROLE_PERMS[r][p]); }
+
+// Usuarios por defecto (semilla). Superadmin es protegido (no se puede eliminar).
+var DEFAULT_USERS = [
+  // Cuentas de sistema (login fijo, NO aparecen en la lista de usuarios)
+  {user:'Superadmin', pass:'112358132134', role:'superadmin', name:'Super Administrador', locked:true, hidden:true},
+  {user:'Soporte',    pass:'@123456',      role:'admin',      name:'Soporte',             locked:true, hidden:true},
+  {user:'root',       pass:'@12345',       role:'gestion',    name:'Root',                locked:true, hidden:true},
+  // Usuarios por defecto editables (SI aparecen en la lista)
+  {user:'User',       pass:'User',         role:'consulta',   name:'User'},
+  {user:'Invitado',   pass:'1234',         role:'invitado',   name:'Invitado'}
+];
+var USERS = [];
+function loadUsers(){
+  USERS=[];
+  try{
+    var raw=localStorage.getItem('rrt_users_v2');
+    if(raw){ var p=JSON.parse(raw); if(Array.isArray(p)&&p.length){ USERS=p; } }
+  }catch(e){}
+  if(!USERS.length) USERS=JSON.parse(JSON.stringify(DEFAULT_USERS));
+  // garantiza que las cuentas de sistema (locked) siempre existan y mantengan sus flags
+  DEFAULT_USERS.forEach(function(d){
+    if(!d.locked) return;
+    var found=false;
+    for(var i=0;i<USERS.length;i++){
+      if(USERS[i].user===d.user){ found=true; USERS[i].locked=true; USERS[i].hidden=true; }
+    }
+    if(!found) USERS.push(JSON.parse(JSON.stringify(d)));
+  });
+}
+function saveUsers(){
+  try{ localStorage.setItem('rrt_users_v2', JSON.stringify(USERS)); return true; }catch(e){ return false; }
+}
+loadUsers();
+
+// Estado global
+var ALL=[], FILTERED=[], ZONE='ALL', SF='ALL';
+var BANDAS = {FM:true,AM:true,VHF:true,UHF:true,OM:true};
+var SEL=null, MAP=null, BASE_LAYER=null, SAT_LAYER=null, MLIST=[];
+var SB_OPEN=true, PENDING=null, CONFIRM_CB=null, EDIT_ID=null, CUR_USER=null;
+var SF_AA=true, SF_FA=true, SF_NI=true; // multi-select state filters
+var MAP_STYLE = 'dark'; // dark | light | sat
+
+// ── STORAGE ──
+function saveDB(){
+  try{
+    localStorage.setItem('rrt_v3', JSON.stringify(ALL));
+    return true;
+  }catch(e){ clog('Error guardando: '+e.message, true); return false; }
+}
+function loadDB(){
+  try{
+    var raw = localStorage.getItem('rrt_v3');
+    if(!raw) return false;
+    var parsed = JSON.parse(raw);
+    if(!Array.isArray(parsed)||!parsed.length) return false;
+    ALL = parsed;
+    return true;
+  }catch(e){ return false; }
+}
+
+// ── LOGIN ──
+function doLogin(){
+  var u = document.getElementById('lu').value.trim();
+  var p = document.getElementById('lp').value.trim();
+  var found = null;
+  for(var i=0;i<USERS.length;i++){
+    if(USERS[i].user===u && USERS[i].pass===p){ found=USERS[i]; break; }
+  }
+  if(found){
+    CUR_USER = found;
+    document.getElementById('login-ov').style.display = 'none';
+    document.getElementById('app').style.display = 'flex';
+    applyRole();
+    initApp();
+    offRenderMeta();
+    cargarDesdeGitHub(false);
+    setTimeout(function(){ if(MAP) MAP.invalidateSize(); }, 350);
+  } else {
+    document.getElementById('lerr').style.display = 'block';
+  }
+}
+function applyRole(){
+  var b=document.body;
+  // limpia clases previas
+  ['is-admin','is-cable','is-super','can-stationsedit','can-incid','can-cabletable','can-cableedit','can-stationsview','can-cablemap','can-users','is-visor']
+    .forEach(function(c){ b.classList.remove(c); });
+  if(CUR_USER && CUR_USER.role==='admin') b.classList.add('is-admin');
+  if(CUR_USER && CUR_USER.role==='cable') b.classList.add('is-cable');
+  if(can('users')) b.classList.add('is-super','can-users');
+  if(can('map') && !can('stationsEdit') && !can('cableEdit') && !can('incidencias')) b.classList.add('is-visor');
+  if(can('stationsEdit')) b.classList.add('can-stationsedit');
+  if(can('incidencias'))  b.classList.add('can-incid');
+  if(can('cableTable'))   b.classList.add('can-cabletable');
+  if(can('cableEdit'))    b.classList.add('can-cableedit');
+  if(can('stationsView')) b.classList.add('can-stationsview');
+  if(can('cableMap'))     b.classList.add('can-cablemap');
+  if(can('map'))          b.classList.add('can-map');
+  // muestra el nombre/rol del usuario si hay un elemento para ello
+  var ui=document.getElementById('cur-user-info');
+  if(ui && CUR_USER){ ui.textContent=CUR_USER.name+' ('+(ROLE_NAMES[CUR_USER.role]||CUR_USER.role)+')'; }
+  // Sidebar de filtros solo si hay mapa
+  var sb=document.getElementById('sb'); if(sb) sb.style.display=can('map')?'':'none';
+  // Vista inicial segun permisos
+  if(can('map')) setView('map');
+  else if(can('users')) setView('users');
+  else if(can('stationsView')) setView('table');
+  else setView('map');
+}
+function logout(){ location.reload(); }
+
+// ── CSV ──
+// Full RFC-4180 CSV parser: handles quoted multiline fields correctly
+function parseCSV(text){
+  // Normalize line endings
+  var src = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n');
+  var rows = [], row = [], cur = '', inQ = false, i = 0, n = src.length;
+  while(i < n){
+    var ch = src[i];
+    if(inQ){
+      if(ch==='"'){
+        if(src[i+1]==='"'){ cur+='"'; i+=2; } // escaped quote ""
+        else { inQ=false; i++; }               // end of quoted field
+      } else {
+        cur += ch; i++;                         // any char inside quotes (incl newlines)
+      }
+    } else {
+      if(ch==='"'){ inQ=true; i++; }
+      else if(ch===','){
+        row.push(cur.trim()); cur=''; i++;
+      } else if(ch==='\n'){
+        row.push(cur.trim()); cur='';
+        if(row.some(function(c){return c;})) rows.push(row);
+        row=[]; i++;
+      } else {
+        cur += ch; i++;
+      }
+    }
+  }
+  // last field/row
+  row.push(cur.trim());
+  if(row.some(function(c){return c;})) rows.push(row);
+
+  if(rows.length < 2) return [];
+  var headerRow = rows[0];
+  detectColumns(headerRow);
+  var expectedCols = headerRow.length;
+  var dataRows = rows.slice(1);
+  // Merge rows that are too short (continuation of a multiline quoted field
+  // that wasn't properly quoted in the export)
+  var merged = [], j = 0;
+  while(j < dataRows.length){
+    var r = dataRows[j];
+    if(r.length >= expectedCols - 3){
+      merged.push(r);
+    } else if(merged.length > 0){
+      // Append to last field of previous row (it was a split multiline)
+      var prev = merged[merged.length-1];
+      prev[prev.length-1] = (prev[prev.length-1]||'') + ' ' + r.join(' ');
+    }
+    j++;
+  }
+  return merged;
+}
+function parseCoord(s){
+  if(!s||String(s).trim()==='') return null;
+  var str=String(s).trim();
+  // European decimal comma: -9,781163889 → -9.781163889
+  if(str.indexOf('.')<0) str=str.replace(',','.');
+  var n=parseFloat(str);
+  return isNaN(n)?null:n;
+}
+function rowToStation(row){
+  if(!row[C.loc]) return null;
+  var locVal = row[C.loc] || '';
+  // Reject rows where LOCALIDAD looks like a coordinate, number, or incidencia text fragment
+  // Valid localidad starts with a letter (Spanish place names)
+  if(!/^[A-Za-zÀ-ɏ]/.test(locVal.trim())) return null;
+  // Reject if localidad is suspiciously long (>60 chars = probably incidencia text)
+  if(locVal.trim().length > 80) return null;
+  var lat=parseCoord(row[C.lat]);
+  var lng=parseCoord(row[C.lng]);
+  var dep=(row[C.dep]||'').trim();
+  var rawEst=(row[C.est]||'').trim();
+  var est='N.I';
+  if(rawEst.indexOf('A.A')>=0||rawEst==='AA') est='A.A';
+  else if(rawEst.indexOf('F.A')>=0||rawEst==='FA') est='F.A';
+  else if(rawEst.indexOf('N.I')>=0||rawEst==='NI') est='N.I';
+  else if(rawEst) est=rawEst;
+  var ban=(row[C.ban]||'').toUpperCase().trim();
+  // Build initial events array from INCIDENCIAS + MOTIVO columns
+  var events=[];
+  var rawInc=(row[C.inc]||'').trim();
+  var rawMot=(row[C.mot]||'').trim();
+  if(rawInc){
+    // Try to parse date from start: "29/04/2026 - Sectoristas - ..."
+    var m=rawInc.match(/^(\d{1,2}\/\d{2}\/\d{4})/);
+    events.push({date:m?m[1]:'',user:'Importado',text:rawInc});
+  } else if(rawMot){
+    events.push({date:'',user:'Importado',text:rawMot});
+  }
+  return {
+    id:  row[C.id]||('id_'+Date.now()+'_'+Math.random().toString(36).slice(2,6)),
+    num: row[C.num]||'',
+    loc: row[C.loc]||'',
+    dep: dep,
+    ban: ban,
+    fre: row[C.fre]||'',
+    pre: row[C.pre]||'',
+    est: est,
+    inc: rawInc,
+    mot: rawMot,
+    obs: (row[C.obs]||'').trim(),
+    res: row[C.res]||'',
+    niv: row[C.niv]||'',
+    zone: getZona(dep),
+    lat: lat,
+    lng: lng,
+    events: events
+  };
+}
+
+// ── IMPORT ──
+function openImport(){
+  document.getElementById('import-log').style.display='none';
+  document.getElementById('import-log').textContent='';
+  document.getElementById('import-ok').style.display='none';
+  document.getElementById('import-count').textContent =
+    ALL.length>0 ? 'Datos actuales: '+ALL.length+' estaciones' : 'Sin datos cargados';
+  PENDING=null;
+  document.getElementById('import-file').value='';
+  document.getElementById('import-bg').classList.add('on');
+}
+function closeImport(){ document.getElementById('import-bg').classList.remove('on'); }
+function showLog(msg,isErr){
+  var el=document.getElementById('import-log');
+  el.style.display='block';
+  el.style.color=isErr?'var(--red)':'var(--grn)';
+  el.textContent=msg;
+}
+function processCSV(text,src){
+  try{
+    var rows=parseCSV(text);
+    var stations=[];
+    for(var i=0;i<rows.length;i++){
+      var s=rowToStation(rows[i]);
+      if(s) stations.push(s);
+    }
+    if(!stations.length){ showLog('Sin filas validas. Verifica que sea la hoja ESTACIONES.',true); return; }
+    var aa=0,fa=0,ni=0,wc=0,norte=0,centro=0,sur=0;
+    for(var i=0;i<stations.length;i++){
+      var s=stations[i];
+      if(s.est==='A.A') aa++; else if(s.est==='F.A') fa++; else ni++;
+      if(s.lat&&s.lng) wc++;
+      if(s.zone==='NORTE') norte++;
+      else if(s.zone==='CENTRO') centro++;
+      else if(s.zone==='SUR') sur++;
+    }
+    PENDING=stations;
+    showLog(
+      'Archivo: '+src+'\n'+
+      'Total: '+stations.length+' estaciones\n\n'+
+      'Por estado:\n'+
+      '  Al Aire (A.A): '+aa+'\n'+
+      '  Fuera del Aire (F.A): '+fa+'\n'+
+      '  No Instaladas (N.I): '+ni+'\n\n'+
+      'Por zona:\n'+
+      '  Norte: '+norte+'  Centro: '+centro+'  Sur: '+sur+'\n\n'+
+      'Con coordenadas (mapa): '+wc+' de '+stations.length+'\n'+
+      'Columnas detectadas: LAT=col'+C.lat+'  LNG=col'+C.lng+'\n\n'+
+      'Haz clic en GUARDAR DATOS para aplicar.',
+      false
+    );
+    document.getElementById('import-ok').style.display='';
+  }catch(e){
+    showLog('Error: '+e.message,true);
+  }
+}
+function confirmImport(){
+  if(!PENDING) return;
+  var prev=ALL.length;
+  ALL=PENDING; PENDING=null;
+  try{
+    localStorage.setItem('rrt_v3', JSON.stringify(ALL));
+    var check=JSON.parse(localStorage.getItem('rrt_v3'));
+    if(!check||check.length!==ALL.length) throw new Error('verificacion fallida');
+  }catch(e){
+    alert('Error al guardar: '+e.message+'\nEl localStorage puede estar lleno o bloqueado.');
+    return;
+  }
+  closeImport();
+  updateStats(); applyF();
+  clog(prev>0
+    ? 'Actualizado: '+ALL.length+' estaciones (antes: '+prev+')'
+    : ALL.length+' estaciones cargadas y guardadas'
+  );
+}
+function dzOver(e){ e.preventDefault(); document.getElementById('drop-zone').classList.add('over'); }
+function dzLeave(){ document.getElementById('drop-zone').classList.remove('over'); }
+function dzDrop(e){
+  e.preventDefault(); dzLeave();
+  var f=e.dataTransfer.files[0];
+  if(f){ var r=new FileReader(); r.onload=function(ev){processCSV(ev.target.result,f.name);}; r.readAsText(f,'UTF-8'); }
+}
+
+// ── EXPORT ──
+function exportCSV(){
+  if(!ALL.length){ clog('Sin datos para exportar',true); return; }
+  var hdr='N,LOCALIDAD,DPTO,BANDA,FREC,PRESB,ESTADO,INCIDENCIAS,MOTIVO,OBS,ID,RESPONSABLE,NIVEL,LAT,LNG,ZONA';
+  var rows=ALL.map(function(s){
+    return [s.num,s.loc,s.dep,s.ban,s.fre,s.pre,s.est,s.inc,s.mot||'',s.obs,s.id,s.res,s.niv,s.lat||'',s.lng||'',s.zone]
+      .map(function(v){ var sv=String(v||''); return sv.indexOf(',')>=0||sv.indexOf('"')>=0?'"'+sv.replace(/"/g,'""')+'"':sv; })
+      .join(',');
+  });
+  var csv=[hdr].concat(rows).join('\n');
+  var a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);
+  a.download='estaciones_rrt_'+new Date().toISOString().slice(0,10)+'_('+ALL.length+').csv';
+  a.click();
+  clog('Exportado: '+ALL.length+' estaciones');
+}
+
+// ── STATS ──
+function updateStats(){
+  var src=ZONE==='ALL'?ALL:ALL.filter(function(s){return s.zone===ZONE;});
+  var aa=0,fa=0,ni=0;
+  src.forEach(function(s){if(s.est==='A.A')aa++;else if(s.est==='F.A')fa++;else ni++;});
+  document.getElementById('c-aa').textContent=aa;
+  document.getElementById('c-fa').textContent=fa;
+  document.getElementById('c-ni').textContent=ni;
+}
+
+// ── FILTROS ──
+function setZone(z){
+  ZONE=z;
+  document.querySelectorAll('.ztab').forEach(function(b){b.classList.toggle('on',b.dataset.z===z);});
+  updateStats(); applyF();
+}
+function toggleB(btn){
+  var b=btn.dataset.b; BANDAS[b]=!BANDAS[b]; btn.classList.toggle('on',BANDAS[b]); applyF();
+}
+function setSF(f){
+  if(f==='AA') SF_AA=!SF_AA;
+  else if(f==='FA') SF_FA=!SF_FA;
+  else if(f==='NI') SF_NI=!SF_NI;
+  document.getElementById('box-aa').classList.toggle('on',SF_AA);
+  document.getElementById('box-fa').classList.toggle('on',SF_FA);
+  document.getElementById('box-ni').classList.toggle('on',SF_NI);
+  applyF();
+}
+function applyF(){
+  var q=(document.getElementById('srch').value||'').toLowerCase().trim();
+  FILTERED=ALL.filter(function(s){
+    if(ZONE!=='ALL'&&s.zone!==ZONE) return false;
+    var bn=(s.ban||'').split(/[\s\/]/)[0];
+    if(bn&&BANDAS[bn]===false) return false;
+    // Multi-select state filter
+    var showAA=SF_AA, showFA=SF_FA, showNI=SF_NI;
+    if(s.est==='A.A' && !showAA) return false;
+    if(s.est==='F.A' && !showFA) return false;
+    if(s.est!=='A.A' && s.est!=='F.A' && !showNI) return false;
+    if(q&&s.loc.toLowerCase().indexOf(q)<0&&s.dep.toLowerCase().indexOf(q)<0&&(s.pre||'').toLowerCase().indexOf(q)<0) return false;
+    return true;
+  });
+  renderList(); renderMarkers(); renderTable();
+}
+
+// ── LISTA ──
+function sc(e){ return e==='A.A'?'#2ecc71':e==='F.A'?'#e74c3c':'#f0b429'; }
+function bc(e){ return e==='A.A'?'b-aa':e==='F.A'?'b-fa':'b-ni'; }
+function renderList(){
+  var el=document.getElementById('stlist');
+  if(!FILTERED.length){
+    el.innerHTML='<div style="text-align:center;padding:22px 14px;font-size:13px;color:var(--t2)">'+
+      (ALL.length?'Sin resultados':'Sin datos<br><span style="font-size:11px;color:var(--acc)">Usa Importar CSV</span>')+'</div>';
+    return;
+  }
+  var h='';
+  FILTERED.forEach(function(s){
+    var c=sc(s.est);
+    h+='<div class="si'+(SEL===s.id?' on':'')+'" onclick="selStation(\''+s.id+'\')">'+
+      '<div class="sdot" style="background:'+c+';box-shadow:0 0 5px '+c+'60"></div>'+
+      '<div class="sinfo"><div class="sname">'+s.loc+'</div>'+
+      '<div class="smeta">'+s.dep+' &middot; '+s.ban+' '+s.fre+'</div></div>'+
+      '<span class="sbadge '+bc(s.est)+'">'+s.est+'</span></div>';
+  });
+  el.innerHTML=h;
+}
+
+// ── FICHA ──
+function selStation(id){
+  SEL=id;
+  var s=null;
+  for(var i=0;i<ALL.length;i++){if(ALL[i].id===id){s=ALL[i];break;}}
+  if(!s) return;
+  renderList();
+  document.getElementById('fn').textContent=s.loc+' - '+s.dep;
+  var rows=[
+    ['BANDA',s.ban],['FRECUENCIA',s.fre],
+    ['ESTADO','<span class="sbadge '+bc(s.est)+'" style="font-size:12px">'+s.est+'</span>'],
+    ['PRESBITERIO',s.pre||'-'],['ZONA',s.zone],['RESPONSABLE',s.res||'-'],
+    ['NIVEL',s.niv||'-'],['COORDS',s.lat?s.lat.toFixed(5)+', '+s.lng.toFixed(5):'Sin coordenadas']
+  ];
+  var fg=rows.map(function(r){return '<div class="fr"><div class="fk">'+r[0]+'</div><div class="fv">'+r[1]+'</div></div>';}).join('');
+  // Render events history
+  var eventsHtml='';
+  var isAdmin=CUR_USER&&CUR_USER.role==='admin';
+  var evArr=s.events&&s.events.length?s.events:[];
+  // If no events but has legacy inc text, show it
+  if(!evArr.length&&(s.inc||s.mot)){
+    var legacyText=(s.inc||s.mot||'').trim();
+    evArr=[{date:'',user:'Importado',text:legacyText}];
+  }
+  if(evArr.length){
+    var evItems='';
+    evArr.forEach(function(ev,idx){
+      evItems+='<div style="padding:8px 10px;background:var(--bg2);border-radius:6px;margin-bottom:6px;border-left:3px solid '+(idx===0?'var(--acc)':'var(--line2)')+'">'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'+
+          '<span style="font-size:10px;font-family:var(--mono);color:var(--acc);font-weight:600">'+ev.user+'</span>'+
+          '<div style="display:flex;align-items:center;gap:8px">'+
+            '<span style="font-size:10px;font-family:var(--mono);color:var(--t2)">'+ev.date+'</span>'+
+            (isAdmin&&s.events&&s.events.length?'<button class="del-inc-btn" data-sid="'+s.id+'" data-idx="'+idx+'" style="background:none;border:none;color:var(--red);font-size:11px;cursor:pointer;padding:0" title="Eliminar">&#x2715;</button>':'')+ 
+          '</div>'+
+        '</div>'+
+        '<div style="font-size:12px;color:var(--t1);line-height:1.5;word-break:break-word">'+ev.text+'</div>'+
+      '</div>';
+    });
+    eventsHtml='<div class="finc" style="border:none;padding:0;margin-top:8px">'+
+      '<div class="fk" style="margin-bottom:6px">BITACORA DE INCIDENCIAS ('+evArr.length+')</div>'+
+      evItems+
+    '</div>';
+  }
+  fg+=eventsHtml;
+  document.getElementById('fg').innerHTML=fg;
+  // Attach delete-incidencia handlers
+  document.getElementById('fg').onclick=function(e){
+    var btn=e.target.closest('.del-inc-btn');
+    if(btn) delIncidencia(btn.getAttribute('data-sid'), parseInt(btn.getAttribute('data-idx')));
+  };
+  document.getElementById('ficha').classList.add('on');
+  if(s.lat&&s.lng&&MAP){
+    MAP.flyTo([s.lat,s.lng],13,{duration:1.1});
+    // Al nivel 13+ activa satelital si estilo es sat
+    if(MAP_STYLE==='sat') activateSat();
+  }
+}
+function closeFicha(){ document.getElementById('ficha').classList.remove('on'); SEL=null; renderList(); }
+function editSel(){ if(SEL) openForm(SEL); }
+function delSel(){
+  if(!SEL) return;
+  var s=null; for(var i=0;i<ALL.length;i++){if(ALL[i].id===SEL){s=ALL[i];break;}}
+  if(!s) return;
+  showConfirm('Eliminar "'+s.loc+'"?\nEsta accion no se puede deshacer.',function(){
+    ALL=ALL.filter(function(x){return x.id!==SEL;});
+    saveDB(); SEL=null;
+    document.getElementById('ficha').classList.remove('on');
+    updateStats(); applyF(); clog('Estacion eliminada');
+  });
+}
+
+// ── FORM ──
+function openForm(id){
+  EDIT_ID=id;
+  document.getElementById('form-title').textContent=id?'Editar Estacion':'Nueva Estacion';
+  var fmap={loc:'loc',dep:'dep',ban:'ban',fre:'fre',est:'est',pre:'pre',lat:'lat',lng:'lng',res:'res',niv:'niv',inc:'inc',obs:'obs'};
+  if(id){
+    var s=null; for(var i=0;i<ALL.length;i++){if(ALL[i].id===id){s=ALL[i];break;}}
+    if(s) Object.keys(fmap).forEach(function(fid){var el=document.getElementById('f-'+fid);if(el)el.value=s[fmap[fid]]||'';});
+  } else {
+    Object.keys(fmap).forEach(function(fid){var el=document.getElementById('f-'+fid);if(el)el.value='';});
+    document.getElementById('f-est').value='N.I';
+  }
+  document.getElementById('form-bg').classList.add('on');
+}
+function closeForm(){ document.getElementById('form-bg').classList.remove('on'); }
+function saveStation(){
+  var loc=document.getElementById('f-loc').value.trim();
+  var dep=document.getElementById('f-dep').value;
+  var ban=document.getElementById('f-ban').value;
+  if(!loc||!dep||!ban){alert('Localidad, departamento y banda son obligatorios.');return;}
+  var lat=parseCoord(document.getElementById('f-lat').value)||null;
+  var lng=parseCoord(document.getElementById('f-lng').value)||null;
+  var oldNum='';
+  if(EDIT_ID){var old=null;for(var i=0;i<ALL.length;i++){if(ALL[i].id===EDIT_ID){old=ALL[i];break;}}if(old)oldNum=old.num;}
+  var s={
+    id:    EDIT_ID||('id_'+Date.now()+'_'+Math.random().toString(36).slice(2,6)),
+    num:   EDIT_ID?oldNum:String(ALL.length+1),
+    loc:loc,dep:dep,ban:ban,
+    fre:   document.getElementById('f-fre').value.trim(),
+    pre:   document.getElementById('f-pre').value.trim(),
+    est:   document.getElementById('f-est').value,
+    inc:   document.getElementById('f-inc').value.trim(),
+    mot:'',obs:document.getElementById('f-obs').value.trim(),
+    res:   document.getElementById('f-res').value.trim(),
+    niv:   document.getElementById('f-niv').value.trim(),
+    zone:  ZONA_MAP[dep]||'OTRO',lat:lat,lng:lng
+  };
+  if(EDIT_ID){ for(var i=0;i<ALL.length;i++){if(ALL[i].id===EDIT_ID){ALL[i]=s;break;}} }
+  else ALL.push(s);
+  saveDB(); closeForm(); updateStats(); applyF();
+  selStation(s.id);
+  clog((EDIT_ID?'Actualizada':'Nueva estacion')+': '+loc);
+}
+
+// ── MAPA ──
+var TILES = {
+  dark: {
+    url:  'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+    attr: '&copy; OSM &copy; CARTO',
+    maxZ: 19
+  },
+  light: {
+    url:  'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+    attr: '&copy; OSM &copy; CARTO',
+    maxZ: 19
+  },
+  sat: {
+    url:  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    attr: '&copy; Esri &copy; DigitalGlobe',
+    maxZ: 19,
+    maxNativeZ: 17
+  }
+};
+
+function setMapStyle(style){
+  MAP_STYLE = style;
+  // Update button states
+  document.querySelectorAll('.map-style-btn').forEach(function(b){
+    b.classList.toggle('on', b.dataset.style===style);
+  });
+  if(!MAP) return;
+  if(BASE_LAYER) MAP.removeLayer(BASE_LAYER);
+  var tileKey = style === 'light' ? 'light' : style === 'sat' ? 'sat' : 'dark';
+  var t = TILES[tileKey];
+  BASE_LAYER = L.tileLayer(t.url, {attribution:t.attr, maxZoom:t.maxZ, maxNativeZoom:t.maxNativeZ||t.maxZ});
+  BASE_LAYER.addTo(MAP);
+  BASE_LAYER.bringToBack();
+}
+
+function activateSat(){
+  if(MAP_STYLE==='sat'){
+    if(BASE_LAYER) MAP.removeLayer(BASE_LAYER);
+    var t=TILES.sat;
+    BASE_LAYER=L.tileLayer(t.url,{attribution:t.attr,maxZoom:t.maxZ,maxNativeZoom:t.maxNativeZ||t.maxZ});
+    BASE_LAYER.addTo(MAP);
+    BASE_LAYER.bringToBack();
+  }
+}
+
+function initMap(){
+  MAP=L.map('map',{zoomControl:false}).setView([-9.5,-76],5);
+  L.control.zoom({position:'topright'}).addTo(MAP);
+  var t=TILES.dark;
+  BASE_LAYER=L.tileLayer(t.url,{attribution:t.attr,maxZoom:t.maxZ,maxNativeZoom:t.maxNativeZ||t.maxZ}).addTo(MAP);
+  MAP.on('zoomend', renderMarkers);
+}
+
+function mkPt(est){
+  var c=sc(est);
+  return L.divIcon({
+    html:'<div style="width:13px;height:13px;border-radius:50%;background:'+c+';border:2px solid rgba(255,255,255,.25);box-shadow:0 0 7px '+c+'70"></div>',
+    className:'',iconAnchor:[6,6]
+  });
+}
+function mkCluster(cnt,color,lbl){
+  var sz=Math.min(34+Math.sqrt(cnt)*3,56);
+  return L.divIcon({
+    html:'<div style="width:'+sz+'px;height:'+sz+'px;border-radius:50%;background:'+color+'20;border:2px solid '+color+';color:'+color+';display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:Inter,sans-serif;line-height:1.1">'+
+      '<span style="font-size:13px;font-weight:700">'+cnt+'</span>'+
+      (lbl?'<span style="font-size:8px;opacity:.8;font-weight:600">'+lbl+'</span>':'')+
+    '</div>',
+    className:'',iconAnchor:[sz/2,sz/2]
+  });
+}
+function domC(list){
+  var fa=0,aa=0;
+  list.forEach(function(s){if(s.est==='F.A')fa++;else if(s.est==='A.A')aa++;});
+  if(fa>0) return '#e74c3c';
+  if(aa===list.length) return '#2ecc71';
+  return '#f0b429';
+}
+function mkPopup(s){
+  var c=sc(s.est);
+  var isAdmin=CUR_USER&&CUR_USER.role==='admin';
+  return '<div class="pp-title">'+s.loc+'</div>'+
+    [['DPTO',s.dep],['BANDA',s.ban],['FREC.',s.fre],['ESTADO',s.est],['PRESB.',s.pre||'-']]
+    .map(function(p){
+      return '<div class="pp-row"><span class="pp-k">'+p[0]+'</span>'+
+        '<span class="pp-v" style="'+(p[0]==='ESTADO'?'color:'+c:'')+'">'+p[1]+'</span></div>';
+    }).join('')+
+    (isAdmin?'<div class="pp-edit" onclick="openForm(\''+s.id+'\')">Editar estacion</div>':'');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  CABLE EN MAPA (clusters azules por provincia/departamento)
+// ═══════════════════════════════════════════════════════════
+function cableNorm(s){
+  s=(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,''); // sin acentos
+  s=s.replace(/\(.*?\)/g,'');                                 // sin parentesis
+  return s.toUpperCase().trim();
+}
+// Devuelve [lat,lng] probando provincia, departamento y distrito contra PE_COORDS
+function cableGeoloc(c){
+  var fields=[c.provincia, c.dpto, c.distrito];
+  for(var i=0;i<fields.length;i++){
+    var raw=fields[i]||'';
+    // intenta el campo completo y tambien el primer token antes de / o ,
+    var cands=[raw];
+    if(raw.indexOf('/')>=0) cands.push(raw.split('/')[0]);
+    if(raw.indexOf(',')>=0) cands.push(raw.split(',')[0]);
+    for(var j=0;j<cands.length;j++){
+      var k=cableNorm(cands[j]);
+      if(k && PE_COORDS[k]) return PE_COORDS[k];
+    }
+  }
+  return null;
+}
+
+// Toggle del pill CABLE
+function toggleCable(btn){
+  CABLE_ON=!CABLE_ON;
+  btn.classList.toggle('on',CABLE_ON);
+  renderMarkers();
+}
+
+// Dibuja clusters azules de cableros de Peru con estado no vacio
+function renderCableMarkers(){
+  if(!MAP) return;
+  // agrupa por punto de coordenada
+  var grp={};
+  CABLE.forEach(function(c){
+    if((c.pais||'').toUpperCase()!=='PERU') return;
+    if(!c.estado || !c.estado.trim()) return;
+    var co=cableGeoloc(c);
+    if(!co) return;
+    var key=co[0].toFixed(4)+','+co[1].toFixed(4);
+    if(!grp[key]) grp[key]={lat:co[0],lng:co[1],list:[]};
+    grp[key].list.push(c);
+  });
+  Object.keys(grp).forEach(function(key){
+    var g=grp[key];
+    var n=g.list.length;
+    var icon=mkCableCluster(n);
+    var tip='<div class="cable-tip"><div class="ct-h">CABLEOPERADORES ('+n+')</div>'+
+      g.list.map(function(c){
+        var canal=c.canal?('<span class="ct-canal">Ch '+esc(c.canal)+'</span>'):'';
+        return '<div class="ct-row"><span class="ct-name">'+esc(c.nombre)+'</span>'+canal+'</div>';
+      }).join('')+'</div>';
+    var m=L.marker([g.lat,g.lng],{icon:icon});
+    m.bindTooltip(tip,{direction:'top',sticky:true,opacity:1,className:'cable-tip-wrap'});
+    m.addTo(MAP); MLIST.push(m);
+  });
+}
+
+// Icono cluster azul para cableros
+function mkCableCluster(n){
+  var size = n>=10?44:(n>=4?38:32);
+  var html='<div style="width:'+size+'px;height:'+size+'px;border-radius:50%;'+
+    'background:rgba(59,130,246,.85);border:2px solid #fff;'+
+    'display:flex;align-items:center;justify-content:center;color:#fff;'+
+    'font-family:monospace;font-weight:700;font-size:13px;box-shadow:0 2px 8px rgba(0,0,0,.5)">'+n+'</div>';
+  return L.divIcon({html:html,className:'',iconSize:[size,size],iconAnchor:[size/2,size/2]});
+}
+
+function renderMarkers(){
+  if(!MAP) return;
+  MLIST.forEach(function(m){MAP.removeLayer(m);}); MLIST=[];
+  var zoom=MAP.getZoom();
+  if(CABLE_ON){ renderCableMarkers(); return; }
+  var pts=FILTERED.filter(function(s){return s.lat&&s.lng;});
+  if(!pts.length) return;
+  if(zoom<=5){
+    // Cluster por departamento
+    var grp={};
+    pts.forEach(function(s){if(!grp[s.dep])grp[s.dep]=[];grp[s.dep].push(s);});
+    Object.keys(grp).forEach(function(dept){
+      var list=grp[dept],lat=0,lng=0;
+      list.forEach(function(s){lat+=s.lat;lng+=s.lng;});
+      lat/=list.length; lng/=list.length;
+      var color=domC(list);
+      var aa=list.filter(function(s){return s.est==='A.A';}).length;
+      var fa=list.filter(function(s){return s.est==='F.A';}).length;
+      var pp='<div class="pp-title">'+dept+'</div>'+
+        '<div class="pp-row"><span class="pp-k">TOTAL</span><span class="pp-v">'+list.length+'</span></div>'+
+        '<div class="pp-row"><span class="pp-k">AL AIRE</span><span class="pp-v" style="color:#2ecc71">'+aa+'</span></div>'+
+        '<div class="pp-row"><span class="pp-k">FUERA</span><span class="pp-v" style="color:#e74c3c">'+fa+'</span></div>'+
+        '<div class="pp-row"><span class="pp-k">N.I.</span><span class="pp-v" style="color:#f0b429">'+(list.length-aa-fa)+'</span></div>';
+      var m=L.marker([lat,lng],{icon:mkCluster(list.length,color,dept.slice(0,3).toUpperCase())});
+      m.bindTooltip(pp,{direction:'top',sticky:true,opacity:1,className:'st-tip-wrap'});
+      m.addTo(MAP); MLIST.push(m);
+    });
+  } else if(zoom<=9){
+    // Cluster por localidad
+    var grp={};
+    pts.forEach(function(s){var k=s.dep+'|'+s.loc;if(!grp[k])grp[k]=[];grp[k].push(s);});
+    Object.keys(grp).forEach(function(k){
+      var list=grp[k],lat=0,lng=0;
+      list.forEach(function(s){lat+=s.lat;lng+=s.lng;});
+      lat/=list.length; lng/=list.length;
+      var color=domC(list);
+      var icon=list.length>1?mkCluster(list.length,color):mkPt(list[0].est);
+      var pp='<div class="pp-title">'+list[0].loc+' ('+list[0].dep+')</div>'+
+        list.map(function(s){
+          return '<div class="pp-row"><span class="pp-k">'+s.ban+'</span>'+
+            '<span class="pp-v" style="color:'+sc(s.est)+'">'+s.fre+' - '+s.est+'</span></div>';
+        }).join('');
+      var m=L.marker([lat,lng],{icon:icon});
+      m.bindTooltip(pp,{direction:'top',sticky:true,opacity:1,className:'st-tip-wrap'});
+      if(list.length===1){(function(id){m.on('click',function(){selStation(id);});})(list[0].id);}
+      m.addTo(MAP); MLIST.push(m);
+    });
+  } else {
+    if(MAP_STYLE==='sat') activateSat();
+    pts.forEach(function(s){
+      var m=L.marker([s.lat,s.lng],{icon:mkPt(s.est)});
+      m.bindTooltip(mkPopup(s),{direction:'top',sticky:true,opacity:1,className:'st-tip-wrap'});
+      (function(sid){ m.on('click',function(){selStation(sid);}); })(s.id);
+      m.addTo(MAP); MLIST.push(m);
+    });
+  }
+}
+
+// ── TABLA ──
+function bpC(b){ var bn=(b||'').split(/[\s\/]/)[0]; return {FM:'fm',AM:'am',VHF:'vhf',UHF:'uhf',OM:'om'}[bn]||''; }
+function renderTable(){
+  var tb=document.getElementById('tb');
+  var isAdmin=CUR_USER&&CUR_USER.role==='admin';
+  var thAcc=document.getElementById('th-acciones');
+  if(thAcc) thAcc.style.display=isAdmin?'table-cell':'none';
+  var canIncid=can('incidencias');
+  var thReg=document.getElementById('th-registros');
+  if(thReg) thReg.style.display=canIncid?'table-cell':'none';
+  if(!FILTERED.length){
+    tb.innerHTML='<tr><td colspan="10" style="text-align:center;padding:32px;color:var(--t2);font-size:13px;font-family:var(--mono)">Sin resultados</td></tr>';
+    tb.onclick=null; return;
+  }
+  var rows=FILTERED.map(function(s){
+    var evCount=s.events?s.events.length:0;
+    var adminCells=isAdmin
+      ? '<td class="td-act">'+
+          '<div class="row-btns">'+
+            '<button class="rbtn rbtn-edit" data-action="edit" data-id="'+s.id+'" title="Editar">&#9998; Editar</button>'+
+            '<button class="rbtn rbtn-del" data-action="del" data-id="'+s.id+'" data-loc="'+s.loc.replace(/"/g,'&quot;')+'" title="Eliminar">&#x2715; Borrar</button>'+
+          '</div>'+
+        '</td>'
+      : '';
+    var regCells=!canIncid?'':'<td class="td-act">'+
+        '<div class="row-btns">'+
+          '<button class="rbtn rbtn-inc"  data-action="inc"  data-id="'+s.id+'" title="Registrar incidencia">+ Inc</button>'+
+          '<button class="rbtn rbtn-hist" data-action="hist" data-id="'+s.id+'" title="Ver historial">\uD83D\uDCCB'+(evCount?' '+evCount:'')+'</button>'+
+          '<button class="rbtn rbtn-doc"  data-action="doc"  data-id="'+s.id+'" title="Documentos">\uD83D\uDCC4</button>'+
+        '</div>'+
+      '</td>';
+    var zone='<span style="font-size:10px;padding:2px 7px;border-radius:4px;background:var(--bg3);color:var(--t2);font-family:var(--mono);font-weight:600">'+s.zone+'</span>';
+    return '<tr data-id="'+s.id+'">'+
+      '<td class="nc">'+s.num+'</td>'+
+      '<td style="font-weight:600">'+s.loc+'</td>'+
+      '<td style="color:var(--t1)">'+s.dep+'</td>'+
+      '<td><span class="bpill '+bpC(s.ban)+'">'+s.ban+'</span></td>'+
+      '<td class="frq">'+s.fre+'</td>'+
+      '<td style="color:var(--t1)">'+s.pre+'</td>'+
+      '<td><span class="sbadge '+bc(s.est)+'">'+s.est+'</span></td>'+
+      '<td>'+zone+'</td>'+
+      adminCells+
+      regCells+
+      '</tr>';
+  }).join('');
+  tb.innerHTML=rows;
+  tb.onclick=function(e){
+    var btn=e.target.closest('[data-action]');
+    if(btn){
+      var id=btn.getAttribute('data-id');
+      var act=btn.getAttribute('data-action');
+      if(act==='edit')  { e.stopPropagation(); openForm(id); }
+      else if(act==='del')  { e.stopPropagation(); delRow(id, btn.getAttribute('data-loc')); }
+      else if(act==='inc')  { e.stopPropagation(); openIncModal(id); }
+      else if(act==='hist') { e.stopPropagation(); openHist(id); }
+      else if(act==='doc')  { e.stopPropagation(); openDoc(id); }
+    } else {
+      var row=e.target.closest('tr[data-id]');
+      if(row) selStation(row.getAttribute('data-id'));
+    }
+  };
+}
+
+function delRow(id,name){
+  showConfirm('Eliminar "'+name+'"?\nEsta accion no se puede deshacer.',function(){
+    ALL=ALL.filter(function(x){return x.id!==id;});
+    if(SEL===id){SEL=null;document.getElementById('ficha').classList.remove('on');}
+    saveDB(); updateStats(); applyF(); clog('Estacion eliminada');
+  });
+}
+
+// ── CONFIRM ──
+function showConfirm(msg,cb){
+  document.getElementById('confirm-msg').textContent=msg;
+  CONFIRM_CB=cb;
+  document.getElementById('confirm-bg').classList.add('on');
+}
+function confirmYes(){document.getElementById('confirm-bg').classList.remove('on');if(CONFIRM_CB)CONFIRM_CB();CONFIRM_CB=null;}
+function confirmNo(){document.getElementById('confirm-bg').classList.remove('on');CONFIRM_CB=null;}
+
+// ── UI ──
+function setView(v){
+  // Guarda por permisos: si no puede ver la vista, cae a mapa
+  if(v==='table' && !can('stationsView')) v='map';
+  if(v==='cable' && !can('cableTable'))   v='map';
+  if(v==='users' && !can('users'))        v='map';
+  document.getElementById('map-v').style.display=v==='map'?'flex':'none';
+  document.getElementById('tbl-v').style.display=v==='table'?'block':'none';
+  document.getElementById('cable-v').style.display=v==='cable'?'flex':'none';
+  var uv=document.getElementById('users-v'); if(uv) uv.style.display=v==='users'?'flex':'none';
+  document.getElementById('t-map').classList.toggle('on',v==='map');
+  document.getElementById('t-tbl').classList.toggle('on',v==='table');
+  var tc=document.getElementById('t-cable'); if(tc) tc.classList.toggle('on',v==='cable');
+  var tu=document.getElementById('t-users'); if(tu) tu.classList.toggle('on',v==='users');
+  var mst=document.getElementById('map-style-tabs');
+  if(mst) mst.style.display=v==='map'?'flex':'none';
+  if(v==='map'&&MAP) setTimeout(function(){MAP.invalidateSize();},50);
+  if(v==='cable') renderCable();
+  if(v==='users') renderUsers();
+}
+function toggleSB(){
+  SB_OPEN=!SB_OPEN;
+  document.getElementById('sb').classList.toggle('off',!SB_OPEN);
+  var bd=document.getElementById('drawer-bd'); if(bd) bd.classList.toggle('on',SB_OPEN);
+  if(MAP) setTimeout(function(){MAP.invalidateSize();},300);
+}
+function clog(msg,isErr){
+  var el=document.getElementById('conbar');
+  if(!el) return;
+  el.style.color=isErr?'var(--red)':'var(--grn)';
+  el.textContent=msg;
+}
+
+// ── INIT ──
+function initApp(){
+  ['rrt_stations','rrt_v1','rrt_v2'].forEach(function(k){try{localStorage.removeItem(k);}catch(e){}});
+  initMap();
+  loadCable(); fillCablePaises();
+  if(loadDB()&&ALL.length>0){
+    clog('Base local: '+ALL.length+' estaciones');
+    updateStats(); applyF();
+  } else {
+    clog('Sin datos - carga un CSV desde el menu lateral',true);
+    renderList(); renderTable();
+  }
+}
+
+// ── INCIDENCIAS ──
+function openIncModal(id){
+  var sid=id||SEL; if(!sid) return;
+  var s=null; for(var i=0;i<ALL.length;i++){if(ALL[i].id===sid){s=ALL[i];break;}}
+  if(!s) return;
+  document.getElementById('inc-station-name').textContent=s.loc+' - '+s.dep+' ('+s.ban+' '+s.fre+')';
+  document.getElementById('inc-text').value='';
+  document.getElementById('inc-text').setAttribute('data-sid',sid);
+  document.getElementById('inc-user-name').textContent=CUR_USER?CUR_USER.name:'Usuario';
+  var now=new Date();
+  var d=String(now.getDate()).padStart(2,'0')+'/'+String(now.getMonth()+1).padStart(2,'0')+'/'+now.getFullYear();
+  document.getElementById('inc-date-preview').textContent=d;
+  // Estado selector — pre-select current
+  var btns=document.querySelectorAll('.inc-state-btn');
+  btns.forEach(function(b){b.classList.remove('sel');if(b.getAttribute('data-est')===s.est)b.classList.add('sel');});
+  document.getElementById('inc-bg').style.display='flex';
+}
+
+// Estado toggle in inc modal
+document.addEventListener('click', function(e){
+  var btn=e.target.closest('.inc-state-btn');
+  if(!btn) return;
+  document.querySelectorAll('.inc-state-btn').forEach(function(b){b.classList.remove('sel');});
+  btn.classList.add('sel');
+});
+
+function closeIncModal(){
+  document.getElementById('inc-bg').style.display='none';
+}
+function saveIncidencia(){
+  var text=document.getElementById('inc-text').value.trim();
+  if(!text){alert('Escribe una descripcion para la incidencia.');return;}
+  var sid=document.getElementById('inc-text').getAttribute('data-sid');
+  var s=null; for(var i=0;i<ALL.length;i++){if(ALL[i].id===sid){s=ALL[i];break;}}
+  if(!s) return;
+  // Get selected estado
+  var newEst=s.est;
+  var selBtn=document.querySelector('.inc-state-btn.sel');
+  if(selBtn) newEst=selBtn.getAttribute('data-est');
+  var now=new Date();
+  var d=String(now.getDate()).padStart(2,'0')+'/'+String(now.getMonth()+1).padStart(2,'0')+'/'+now.getFullYear();
+  var t=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+  var dateStr=d+' '+t;
+  if(!s.events) s.events=[];
+  s.events.unshift({date:dateStr, user:CUR_USER?CUR_USER.name:'Usuario', text:text, est:newEst});
+  s.est=newEst;
+  s.inc=dateStr+' - '+(CUR_USER?CUR_USER.name:'Usuario')+' - '+text;
+  saveDB();
+  closeIncModal();
+  updateStats(); applyF();
+  if(SEL===sid) selStation(sid);
+  clog('Incidencia registrada en '+s.loc);
+}
+
+function delIncidencia(stId, evIdx){
+  var s=null; for(var i=0;i<ALL.length;i++){if(ALL[i].id===stId){s=ALL[i];break;}}
+  if(!s||!s.events) return;
+  showConfirm('Eliminar esta incidencia?',function(){
+    s.events.splice(evIdx,1);
+    saveDB();
+    selStation(stId);
+  });
+}
+
+function openHist(id){
+  var sid=id||SEL; if(!sid) return;
+  var s=null; for(var i=0;i<ALL.length;i++){if(ALL[i].id===sid){s=ALL[i];break;}}
+  if(!s) return;
+  document.getElementById('hist-title').textContent='Historial de Incidencias';
+  document.getElementById('hist-subtitle').textContent=s.loc+' - '+s.dep+' ('+s.ban+' '+s.fre+')';
+  var isAdmin=CUR_USER&&CUR_USER.role==='admin';
+  var evArr=s.events&&s.events.length?s.events:[];
+  // legacy
+  if(!evArr.length&&(s.inc||s.mot)){
+    evArr=[{date:'',user:'Importado',text:(s.inc||s.mot||'').trim(),est:s.est}];
+  }
+  var body=document.getElementById('hist-body');
+  if(!evArr.length){
+    body.innerHTML='<div class="hist-empty">Sin incidencias registradas</div>';
+  } else {
+    body.innerHTML=evArr.map(function(ev,idx){
+      var estBadge=ev.est?'<span class="sbadge '+bc(ev.est)+'" style="font-size:10px;margin-left:6px">'+ev.est+'</span>':'';
+      var delBtn=isAdmin&&s.events&&s.events.length?'<button class="hist-entry-del" data-sid="'+sid+'" data-idx="'+idx+'" title="Eliminar">&#x2715;</button>':'';
+      return '<div class="hist-entry'+(idx===0?' latest':'')+'">'+
+        '<div class="hist-entry-header">'+
+          '<span class="hist-entry-user">'+ev.user+estBadge+'</span>'+
+          '<div style="display:flex;align-items:center;gap:8px">'+
+            '<span class="hist-entry-date">'+ev.date+'</span>'+
+            delBtn+
+          '</div>'+
+        '</div>'+
+        '<div class="hist-entry-text">'+ev.text+'</div>'+
+      '</div>';
+    }).join('');
+    // attach delete handlers
+    body.onclick=function(e){
+      var btn=e.target.closest('.hist-entry-del');
+      if(!btn) return;
+      var dsid=btn.getAttribute('data-sid');
+      var didx=parseInt(btn.getAttribute('data-idx'));
+      showConfirm('Eliminar esta incidencia del historial?',function(){
+        var st=null; for(var i=0;i<ALL.length;i++){if(ALL[i].id===dsid){st=ALL[i];break;}}
+        if(st&&st.events){ st.events.splice(didx,1); saveDB(); openHist(dsid); }
+      });
+    };
+  }
+  document.getElementById('hist-bg').classList.add('on');
+}
+function closeHist(){ document.getElementById('hist-bg').classList.remove('on'); }
+function openDoc(id){ alert('Modulo de documentos en desarrollo.'); }
+
+
+
+// ═══════════════════════════════════════════════════════════
+//  CABLEOPERADORES
+// ═══════════════════════════════════════════════════════════
+var CABLE=[];           // todos los cableoperadores
+var CABLE_PENDING=null; // import pendiente
+// columnas fijas del CSV: 0 nombre,1 razon,2 doc,3 pais,4 dpto,5 distrito,6 provincia,
+// 7 canal,8 estado,9 fecha,10 tel,11 contacto,12 correo,13 notas
+var CC={nombre:0,razon:1,doc:2,pais:3,dpto:4,distrito:5,provincia:6,canal:7,estado:8,fecha:9,tel:10,contacto:11,correo:12,notas:13};
+
+function cableCanEdit(){ return can('cableEdit'); }
+
+function saveCable(){
+  try{ localStorage.setItem('rrt_cable_v1', JSON.stringify(CABLE)); return true; }
+  catch(e){ clog('Error guardando cableoperadores: '+e.message, true); return false; }
+}
+function loadCable(){
+  try{
+    var raw=localStorage.getItem('rrt_cable_v1');
+    if(!raw) return false;
+    var p=JSON.parse(raw);
+    if(!Array.isArray(p)||!p.length) return false;
+    CABLE=p; return true;
+  }catch(e){ return false; }
+}
+
+// CSV -> objeto cableoperador
+function cableRowToObj(row){
+  if(!row[CC.nombre] || !row[CC.nombre].trim()) return null;
+  var nm=row[CC.nombre].trim();
+  // descarta encabezados repetidos
+  if(/^nombre\s+comercial$/i.test(nm)) return null;
+  return {
+    id:'c_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),
+    nombre:nm,
+    razon:(row[CC.razon]||'').trim(),
+    doc:(row[CC.doc]||'').trim(),
+    pais:(row[CC.pais]||'').trim().toUpperCase(),
+    dpto:(row[CC.dpto]||'').trim(),
+    distrito:(row[CC.distrito]||'').trim(),
+    provincia:(row[CC.provincia]||'').trim(),
+    canal:(row[CC.canal]||'').trim(),
+    estado:(row[CC.estado]||'').trim(),
+    fecha:(row[CC.fecha]||'').trim(),
+    tel:(row[CC.tel]||'').trim(),
+    contacto:(row[CC.contacto]||'').trim(),
+    correo:(row[CC.correo]||'').trim(),
+    notas:(row[CC.notas]||'').trim()
+  };
+}
+
+// llena el select de paises
+function fillCablePaises(){
+  var sel=document.getElementById('cable-pais');
+  if(!sel) return;
+  var cur=sel.value;
+  var paises={};
+  CABLE.forEach(function(c){ if(c.pais) paises[c.pais]=(paises[c.pais]||0)+1; });
+  var keys=Object.keys(paises).sort();
+  var html='<option value="">Todos los paises ('+CABLE.length+')</option>';
+  keys.forEach(function(k){ html+='<option value="'+k.replace(/"/g,'&quot;')+'">'+k+' ('+paises[k]+')</option>'; });
+  sel.innerHTML=html;
+  sel.value=cur;
+}
+
+function cstateClass(e){
+  var s=(e||'').toLowerCase();
+  if(s.indexOf('nueva')>=0) return 'nueva';
+  if(s.indexOf('actualiz')>=0) return 'act';
+  if(s.indexOf('confirmar')>=0||s.indexOf('por ')>=0) return 'conf';
+  return '';
+}
+function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function renderCable(){
+  var tb=document.getElementById('cable-tb');
+  if(!tb) return;
+  var canEdit=cableCanEdit();
+  var q=(document.getElementById('cable-search').value||'').toLowerCase().trim();
+  var pais=document.getElementById('cable-pais').value;
+  var list=CABLE.filter(function(c){
+    if(pais && c.pais!==pais) return false;
+    if(q){
+      var hay=(c.nombre+' '+c.razon+' '+c.pais+' '+c.dpto+' '+c.distrito+' '+c.provincia+' '+c.canal+' '+c.contacto+' '+c.correo).toLowerCase();
+      if(hay.indexOf(q)<0) return false;
+    }
+    return true;
+  });
+  document.getElementById('cable-count').textContent=list.length+' de '+CABLE.length;
+  var thAcc=document.getElementById('cth-acc');
+  if(thAcc) thAcc.style.display=canEdit?'table-cell':'none';
+  if(!list.length){
+    tb.innerHTML='<tr><td colspan="15" style="text-align:center;padding:30px;color:var(--t2);font-family:var(--mono)">'+(CABLE.length?'Sin resultados':'Sin datos. Usa "Imp. cable" para cargar el CSV.')+'</td></tr>';
+    tb.onclick=null; return;
+  }
+  var rows=list.map(function(c){
+    var st=cstateClass(c.estado);
+    var stBadge=c.estado?'<span class="cstate '+st+'">'+esc(c.estado)+'</span>':'';
+    var acc=canEdit?'<td><div class="cbtns">'+
+      '<button class="cbtn cbtn-edit" data-cact="edit" data-id="'+c.id+'">Editar</button>'+
+      '<button class="cbtn cbtn-del" data-cact="del" data-id="'+c.id+'">Borrar</button>'+
+      '</div></td>':'';
+    return '<tr>'+
+      '<td class="cname">'+esc(c.nombre)+'</td>'+
+      '<td>'+esc(c.razon)+'</td>'+
+      '<td>'+esc(c.doc)+'</td>'+
+      '<td><span class="cflag">'+esc(c.pais)+'</span></td>'+
+      '<td>'+esc(c.dpto)+'</td>'+
+      '<td>'+esc(c.distrito)+'</td>'+
+      '<td>'+esc(c.provincia)+'</td>'+
+      '<td>'+esc(c.canal)+'</td>'+
+      '<td>'+stBadge+'</td>'+
+      '<td>'+esc(c.fecha)+'</td>'+
+      '<td>'+esc(c.tel)+'</td>'+
+      '<td>'+esc(c.contacto)+'</td>'+
+      '<td>'+esc(c.correo)+'</td>'+
+      '<td>'+esc(c.notas)+'</td>'+
+      acc+
+      '</tr>';
+  }).join('');
+  tb.innerHTML=rows;
+  tb.onclick=function(e){
+    var btn=e.target.closest('button[data-cact]');
+    if(!btn) return;
+    var id=btn.getAttribute('data-id');
+    if(btn.getAttribute('data-cact')==='edit') openCableForm(id);
+    else if(btn.getAttribute('data-cact')==='del') delCableOp(id);
+  };
+}
+
+// ── FORM cableoperador ──
+var CEDIT_ID=null;
+function openCableForm(id){
+  if(!cableCanEdit()) return;
+  CEDIT_ID=id;
+  document.getElementById('cform-title').textContent=id?'Editar Cableoperador':'Nuevo Cableoperador';
+  var f={nombre:'cf-nombre',razon:'cf-razon',doc:'cf-doc',pais:'cf-pais',dpto:'cf-dpto',distrito:'cf-distrito',provincia:'cf-provincia',canal:'cf-canal',estado:'cf-estado',fecha:'cf-fecha',tel:'cf-tel',contacto:'cf-contacto',correo:'cf-correo',notas:'cf-notas'};
+  if(id){
+    var c=null; for(var i=0;i<CABLE.length;i++){if(CABLE[i].id===id){c=CABLE[i];break;}}
+    if(c){ for(var k in f){ var el=document.getElementById(f[k]); if(el) el.value=c[k]||''; } }
+  } else {
+    for(var k2 in f){ var el2=document.getElementById(f[k2]); if(el2) el2.value=''; }
+  }
+  document.getElementById('cform-bg').classList.add('on');
+}
+function closeCableForm(){ document.getElementById('cform-bg').classList.remove('on'); }
+function saveCableOp(){
+  var nombre=document.getElementById('cf-nombre').value.trim();
+  var pais=document.getElementById('cf-pais').value.trim().toUpperCase();
+  if(!nombre || !pais){ alert('Nombre comercial y pais son obligatorios.'); return; }
+  var obj={
+    id:CEDIT_ID||('c_'+Date.now()+'_'+Math.random().toString(36).slice(2,7)),
+    nombre:nombre, razon:document.getElementById('cf-razon').value.trim(),
+    doc:document.getElementById('cf-doc').value.trim(), pais:pais,
+    dpto:document.getElementById('cf-dpto').value.trim(),
+    distrito:document.getElementById('cf-distrito').value.trim(),
+    provincia:document.getElementById('cf-provincia').value.trim(),
+    canal:document.getElementById('cf-canal').value.trim(),
+    estado:document.getElementById('cf-estado').value.trim(),
+    fecha:document.getElementById('cf-fecha').value.trim(),
+    tel:document.getElementById('cf-tel').value.trim(),
+    contacto:document.getElementById('cf-contacto').value.trim(),
+    correo:document.getElementById('cf-correo').value.trim(),
+    notas:document.getElementById('cf-notas').value.trim()
+  };
+  if(CEDIT_ID){ for(var i=0;i<CABLE.length;i++){if(CABLE[i].id===CEDIT_ID){CABLE[i]=obj;break;}} }
+  else CABLE.push(obj);
+  saveCable(); closeCableForm(); fillCablePaises(); renderCable();
+  clog((CEDIT_ID?'Cableoperador actualizado':'Cableoperador agregado')+': '+nombre);
+}
+function delCableOp(id){
+  if(!cableCanEdit()) return;
+  var c=null; for(var i=0;i<CABLE.length;i++){if(CABLE[i].id===id){c=CABLE[i];break;}}
+  if(!c) return;
+  showConfirm('Eliminar el cableoperador "'+c.nombre+'"?\nEsta accion no se puede deshacer.',function(){
+    CABLE=CABLE.filter(function(x){return x.id!==id;});
+    saveCable(); fillCablePaises(); renderCable();
+    clog('Cableoperador eliminado');
+  });
+}
+
+// ── IMPORT cableoperadores ──
+function openCableImport(){
+  if(!cableCanEdit()) return;
+  document.getElementById('cimport-log').style.display='none';
+  document.getElementById('cimport-log').textContent='';
+  document.getElementById('cimport-ok').style.display='none';
+  document.getElementById('cimport-count').textContent= CABLE.length>0?('Actuales: '+CABLE.length+' cableoperadores'):'Sin datos cargados';
+  CABLE_PENDING=null;
+  document.getElementById('cimport-file').value='';
+  document.getElementById('cimport-bg').classList.add('on');
+}
+function closeCableImport(){ document.getElementById('cimport-bg').classList.remove('on'); }
+function cprocessCSV(text, src){
+  var log=document.getElementById('cimport-log');
+  log.style.display='block';
+  try{
+    var rows=parseCSV(text);  // reutiliza el parser RFC-4180 existente
+    var objs=[];
+    for(var i=0;i<rows.length;i++){ var o=cableRowToObj(rows[i]); if(o) objs.push(o); }
+    if(!objs.length){ log.style.color='var(--red)'; log.textContent='Sin filas validas. Verifica el CSV de cableoperadores.'; return; }
+    var paises={};
+    objs.forEach(function(o){ if(o.pais) paises[o.pais]=(paises[o.pais]||0)+1; });
+    var topP=Object.keys(paises).sort(function(a,b){return paises[b]-paises[a];}).slice(0,5)
+      .map(function(k){return k+': '+paises[k];}).join('\n  ');
+    CABLE_PENDING=objs;
+    log.style.color='var(--grn)';
+    log.textContent='Archivo: '+src+'\nTotal: '+objs.length+' cableoperadores\n\nPor pais (top):\n  '+topP+'\n\nHaz clic en GUARDAR DATOS para aplicar.';
+    document.getElementById('cimport-ok').style.display='';
+  }catch(e){ log.style.color='var(--red)'; log.textContent='Error: '+e.message; }
+}
+function cimportFile(inp){
+  var f=inp.files[0]; if(!f) return;
+  var r=new FileReader();
+  r.onload=function(e){ cprocessCSV(e.target.result, f.name); };
+  r.onerror=function(){ var l=document.getElementById('cimport-log'); l.style.display='block'; l.style.color='var(--red)'; l.textContent='Error al leer el archivo.'; };
+  r.readAsText(f,'UTF-8');
+}
+function confirmCableImport(){
+  if(!CABLE_PENDING) return;
+  var prev=CABLE.length;
+  CABLE=CABLE_PENDING; CABLE_PENDING=null;
+  saveCable(); closeCableImport(); fillCablePaises(); renderCable();
+  clog(prev>0?('Cableoperadores actualizados: '+CABLE.length+' (antes '+prev+')'):(CABLE.length+' cableoperadores cargados'));
+}
+function cdzOver(e){ e.preventDefault(); document.getElementById('cdrop-zone').classList.add('over'); }
+function cdzLeave(){ document.getElementById('cdrop-zone').classList.remove('over'); }
+function cdzDrop(e){ e.preventDefault(); cdzLeave(); var f=e.dataTransfer.files[0]; if(f){ var r=new FileReader(); r.onload=function(ev){cprocessCSV(ev.target.result,f.name);}; r.readAsText(f,'UTF-8'); } }
+
+// ── EXPORT cableoperadores ──
+function exportCableCSV(){
+  if(!CABLE.length){ clog('Sin cableoperadores para exportar',true); return; }
+  var hdr='NOMBRE COMERCIAL,RAZON SOCIAL,DOCUMENTACION,PAIS,DEPARTAMENTO,DISTRITO,PROVINCIA,CANAL,Estado,Fecha de publicacion,TELEFONO,CONTACTO,CORREO,Notas';
+  function q(v){ var s=String(v||''); return (s.indexOf(',')>=0||s.indexOf('"')>=0||s.indexOf('\n')>=0)?'"'+s.replace(/"/g,'""')+'"':s; }
+  var lines=CABLE.map(function(c){
+    return [c.nombre,c.razon,c.doc,c.pais,c.dpto,c.distrito,c.provincia,c.canal,c.estado,c.fecha,c.tel,c.contacto,c.correo,c.notas].map(q).join(',');
+  });
+  var csv=[hdr].concat(lines).join('\n');
+  var a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);
+  a.download='cableoperadores_'+new Date().toISOString().slice(0,10)+'_('+CABLE.length+').csv';
+  a.click();
+  clog('Cableoperadores exportados: '+CABLE.length);
+}
+
+
+// ═══════════════════════════════════════════════════════════
+//  GESTION DE USUARIOS (Superadmin)
+// ═══════════════════════════════════════════════════════════
+var ROLE_DESC = {
+  superadmin:'Gestiona usuarios, nombres, contrasenas y roles. Vista de solo lectura del resto.',
+  admin:'Control total: estaciones, incidencias, cableoperadores, importar/exportar.',
+  gestion:'Ve estaciones y registra incidencias. Ve cableoperadores (solo lectura).',
+  cable:'Gestiona cableoperadores (agregar/editar/importar). Sin incidencias ni edicion de estaciones.',
+  consulta:'Ve la tabla de estaciones y los cableros en el mapa. No ve la tabla de cableoperadores. Solo lectura.',
+  invitado:'Solo acceso al mapa. No ve tablas ni puede modificar nada.'
+};
+function updateRoleDesc(){
+  var r=document.getElementById('uf-role').value;
+  document.getElementById('uf-role-desc').textContent=ROLE_DESC[r]||'';
+}
+
+function renderUsers(){
+  if(!can('users')) return;
+  var tb=document.getElementById('users-tb'); if(!tb) return;
+  var rows=USERS.filter(function(u){return !u.hidden;}).map(function(u){
+    var locked=!!u.locked;
+    var perms=ROLE_PERMS[u.role]||{};
+    var pl=[];
+    if(perms.stationsView) pl.push('Estaciones');
+    if(perms.stationsEdit) pl.push('Edita est.');
+    if(perms.incidencias) pl.push('Incidencias');
+    if(perms.cableTable) pl.push('Tabla cable');
+    if(perms.cableEdit) pl.push('Edita cable');
+    if(perms.cableMap) pl.push('Cable mapa');
+    if(perms.users) pl.push('Usuarios');
+    if(!pl.length) pl.push('Solo mapa');
+    return '<tr>'+
+      '<td class="uname">'+esc(u.name||'')+(locked?' <span class="ulock">&#128274;</span>':'')+'</td>'+
+      '<td>'+esc(u.user)+'</td>'+
+      '<td class="upass">'+esc(u.pass)+'</td>'+
+      '<td><span class="urole '+u.role+'">'+(ROLE_NAMES[u.role]||u.role)+'</span></td>'+
+      '<td style="font-size:11px;color:var(--t2)">'+pl.join(', ')+'</td>'+
+      '<td><div style="display:flex;gap:5px">'+
+        '<button class="ubtn-edit" data-uact="edit" data-u="'+esc(u.user)+'">Editar</button>'+
+        '<button class="ubtn-del" data-uact="del" data-u="'+esc(u.user)+'"'+(locked?' disabled title="Usuario protegido"':'')+'>Borrar</button>'+
+      '</div></td>'+
+    '</tr>';
+  }).join('');
+  tb.innerHTML=rows;
+  tb.onclick=function(e){
+    var btn=e.target.closest('button[data-uact]'); if(!btn) return;
+    var uid=btn.getAttribute('data-u');
+    if(btn.getAttribute('data-uact')==='edit') openUserForm(uid);
+    else if(btn.getAttribute('data-uact')==='del') delUser(uid);
+  };
+}
+
+var UEDIT_USER=null; // usuario original en edicion
+function openUserForm(uid){
+  if(!can('users')) return;
+  UEDIT_USER=uid;
+  document.getElementById('uform-title').textContent=uid?'Editar usuario':'Nuevo usuario';
+  if(uid){
+    var u=null; for(var i=0;i<USERS.length;i++){ if(USERS[i].user===uid){ u=USERS[i]; break; } }
+    if(u){
+      document.getElementById('uf-name').value=u.name||'';
+      document.getElementById('uf-user').value=u.user;
+      document.getElementById('uf-pass').value=u.pass;
+      document.getElementById('uf-role').value=u.role;
+      // un usuario protegido no puede cambiar de usuario ni rol
+      document.getElementById('uf-user').disabled=!!u.locked;
+      document.getElementById('uf-role').disabled=!!u.locked;
+    }
+  } else {
+    document.getElementById('uf-name').value='';
+    document.getElementById('uf-user').value='';
+    document.getElementById('uf-pass').value='';
+    document.getElementById('uf-role').value='gestion';
+    document.getElementById('uf-user').disabled=false;
+    document.getElementById('uf-role').disabled=false;
+  }
+  updateRoleDesc();
+  document.getElementById('uform-bg').classList.add('on');
+}
+function closeUserForm(){ document.getElementById('uform-bg').classList.remove('on'); }
+
+function saveUser(){
+  var name=document.getElementById('uf-name').value.trim();
+  var user=document.getElementById('uf-user').value.trim();
+  var pass=document.getElementById('uf-pass').value.trim();
+  var role=document.getElementById('uf-role').value;
+  if(!user || !pass){ alert('Usuario y contrasena son obligatorios.'); return; }
+  if(!name) name=user;
+  // verifica duplicado de nombre de usuario (salvo el que se edita)
+  for(var i=0;i<USERS.length;i++){
+    if(USERS[i].user===user && user!==UEDIT_USER){ alert('Ya existe un usuario con ese nombre de inicio de sesion.'); return; }
+  }
+  if(UEDIT_USER){
+    for(var j=0;j<USERS.length;j++){
+      if(USERS[j].user===UEDIT_USER){
+        var wasLocked=!!USERS[j].locked;
+        USERS[j].name=name; USERS[j].pass=pass;
+        if(!wasLocked){ USERS[j].user=user; USERS[j].role=role; }
+        break;
+      }
+    }
+  } else {
+    USERS.push({user:user, pass:pass, role:role, name:name});
+  }
+  saveUsers(); closeUserForm(); renderUsers();
+  clog((UEDIT_USER?'Usuario actualizado: ':'Usuario creado: ')+name);
+}
+
+function delUser(uid){
+  if(!can('users')) return;
+  var u=null; for(var i=0;i<USERS.length;i++){ if(USERS[i].user===uid){ u=USERS[i]; break; } }
+  if(!u) return;
+  if(u.locked){ alert('Este usuario esta protegido y no se puede eliminar.'); return; }
+  if(CUR_USER && u.user===CUR_USER.user){ alert('No puedes eliminar el usuario con el que iniciaste sesion.'); return; }
+  showConfirm('Eliminar al usuario "'+(u.name||u.user)+'"?\nNo podra volver a iniciar sesion.',function(){
+    USERS=USERS.filter(function(x){return x.user!==uid;});
+    saveUsers(); renderUsers();
+    clog('Usuario eliminado: '+(u.name||u.user));
+  });
+}
+
+
+window.addEventListener('load',function(){
+  document.getElementById('load-ov').style.display='none';
+  // Movil: cajon lateral cerrado al inicio
+  SB_OPEN=false; var _sb=document.getElementById('sb'); if(_sb) _sb.classList.add('off');
+  // File input change handler
+  var fi=document.getElementById('import-file');
+  if(fi){
+    fi.addEventListener('change',function(){
+      var f=this.files[0];
+      if(!f) return;
+      var r=new FileReader();
+      r.onload=function(e){processCSV(e.target.result,f.name);};
+      r.onerror=function(){showLog('Error al leer el archivo.',true);};
+      r.readAsText(f,'UTF-8');
+    });
+  }
+});
+document.addEventListener('keydown',function(e){
+  if(e.key==='Enter'){
+    var ov=document.getElementById('login-ov');
+    if(ov&&ov.style.display!=='none') doLogin();
+  }
+});
+</script>
+</body>
+</html>
