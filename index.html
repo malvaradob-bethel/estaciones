@@ -568,7 +568,7 @@ html, body { height:100%; width:100%; overflow:hidden; position:fixed; top:0; le
 .off-btn.net { background:rgba(46,204,113,.16); border-color:var(--grn); color:var(--grn); }
 
 /* Bloque destacado: ultima actualizacion en la ficha */
-.ult-act { background:rgba(79,142,247,.10); border:1px solid var(--acc); border-radius:8px; padding:10px 12px; margin-bottom:12px; grid-column:1 / -1; }
+.ult-act { background:rgba(79,142,247,.10); border:1px solid var(--acc); border-radius:8px; padding:10px 12px; margin:8px 0 12px; grid-column:1 / -1; }
 .ult-act-h { font-family:var(--mono); font-size:11px; font-weight:700; color:var(--acc); letter-spacing:.5px; margin-bottom:6px; }
 .ult-act-t { font-size:13px; color:var(--t0); line-height:1.5; white-space:pre-wrap; }
 
@@ -589,7 +589,7 @@ html, body { height:100%; width:100%; overflow:hidden; position:fixed; top:0; le
 /* Burbujas de chat en el mapa (movil) */
 .cb-pop .leaflet-popup-tip-container { display:none; }
 .cb-pop .leaflet-popup-content-wrapper { background:var(--bg1); border-radius:12px; position:relative; }
-.cb-pop .leaflet-popup-content { margin:8px 24px 8px 11px; }
+.cb-pop .leaflet-popup-content { margin:8px 22px 8px 11px; width:150px !important; }
 .cb-inner { cursor:pointer; }
 .cb-head { font-size:11px; font-weight:700; color:var(--t0); margin-bottom:3px; }
 .cb-txt { font-size:10px; color:var(--t1); line-height:1.35; }
@@ -2015,7 +2015,7 @@ function bubbleTap(id){ closeStBubbles(); selStation(id); }
 function bubbleContent(s){
   var ult=(s.events&&s.events.length&&s.events[0].text)?s.events[0].text:(s.mot||'');
   ult=(ult||'').trim();
-  if(ult.length>90) ult=ult.slice(0,90)+'\u2026';
+  if(ult.length>80) ult=ult.slice(0,80)+'\u2026';
   return '<div class="cb-inner" onclick="bubbleTap(\''+s.id+'\')">'+
     '<div class="cb-head">'+esc(s.loc)+' \u00B7 '+esc(s.ban)+'</div>'+
     (ult?'<div class="cb-txt">'+esc(ult)+'</div>':'')+'</div>';
@@ -2024,11 +2024,11 @@ function openStBubbles(list, latlng){
   closeStBubbles();
   if(!list||!list.length) return;
   var layout = list.length===1?['down']:(list.length===2?['right','left']:['right','left','down']);
-  var OFF={ right:[-100,-18], left:[100,-18], down:[0,-16] };
+  var OFF={ right:[-92,-14], left:[92,-14], down:[0,-14] };
   list.forEach(function(s,i){
     var dir=layout[i]||'down';
     var col=sc(s.est);
-    var p=L.popup({autoClose:false,closeOnClick:false,className:'cb-pop cb-'+dir,offset:OFF[dir],maxWidth:190,minWidth:120,closeButton:true,autoPan:false});
+    var p=L.popup({autoClose:false,closeOnClick:false,className:'cb-pop cb-'+dir,offset:OFF[dir],maxWidth:160,minWidth:140,closeButton:true,autoPan:false});
     p.setLatLng(latlng).setContent(bubbleContent(s));
     p.addTo(MAP);
     var el=p.getElement();
