@@ -571,6 +571,32 @@ html, body { height:100%; width:100%; overflow:hidden; position:fixed; top:0; le
 .ult-act { background:rgba(79,142,247,.10); border:1px solid var(--acc); border-radius:8px; padding:10px 12px; margin-bottom:12px; }
 .ult-act-h { font-family:var(--mono); font-size:11px; font-weight:700; color:var(--acc); letter-spacing:.5px; margin-bottom:6px; }
 .ult-act-t { font-size:13px; color:var(--t0); line-height:1.5; white-space:pre-wrap; }
+
+.foto-gal-h { font-family:var(--mono); font-size:11px; font-weight:700; color:var(--t1); letter-spacing:.5px; margin:14px 0 8px; }
+.foto-gal { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+.foto-item { background:var(--bg2); border-radius:8px; overflow:hidden; cursor:pointer; border:1px solid var(--line); }
+.foto-item img { width:100%; height:78px; object-fit:cover; display:block; }
+.foto-item .foto-cap { font-size:10px; padding:5px 6px; color:var(--t1); line-height:1.3; }
+.foto-item.empty { cursor:default; opacity:.45; display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:108px; text-align:center; }
+.foto-item .foto-ph { font-size:22px; color:var(--t2); font-weight:700; }
+.foto-item .pend { color:var(--t2); font-size:9px; }
+#foto-lb { display:none; position:fixed; inset:0; z-index:3000; background:rgba(0,0,0,.92); align-items:center; justify-content:center; padding:18px; }
+#foto-lb.on { display:flex; }
+.foto-lb-box { max-width:96vw; max-height:96vh; text-align:center; }
+#foto-lb-img { max-width:96vw; max-height:84vh; border-radius:8px; }
+#foto-lb-cap { color:#fff; font-size:14px; margin-top:10px; font-family:var(--mono); }
+
+/* Burbujas de chat en el mapa (movil) */
+.cb-pop .leaflet-popup-tip-container { display:none; }
+.cb-pop .leaflet-popup-content-wrapper { background:var(--bg1); border-radius:12px; position:relative; }
+.cb-pop .leaflet-popup-content { margin:8px 24px 8px 11px; }
+.cb-inner { cursor:pointer; }
+.cb-head { font-size:11px; font-weight:700; color:var(--t0); margin-bottom:3px; }
+.cb-txt { font-size:10px; color:var(--t1); line-height:1.35; }
+.cb-pop .leaflet-popup-content-wrapper::after { content:''; position:absolute; width:0; height:0; }
+.cb-right .leaflet-popup-content-wrapper::after { right:-9px; top:50%; transform:translateY(-50%); border-top:8px solid transparent; border-bottom:8px solid transparent; border-left:9px solid var(--cb-col); }
+.cb-left .leaflet-popup-content-wrapper::after { left:-9px; top:50%; transform:translateY(-50%); border-top:8px solid transparent; border-bottom:8px solid transparent; border-right:9px solid var(--cb-col); }
+.cb-down .leaflet-popup-content-wrapper::after { bottom:-9px; left:50%; transform:translateX(-50%); border-left:8px solid transparent; border-right:8px solid transparent; border-top:9px solid var(--cb-col); }
 </style>
 </head>
 <body>
@@ -1216,6 +1242,8 @@ function detectColumns(headers){
   r=fi(['nivel']);                    if(r>=0) C.niv=r;
   r=fi(['lat','latitud']);            if(r>=0) C.lat=r;
   r=fi(['lng','lon','longitud']);     if(r>=0) C.lng=r;
+  r=fi(['potencia']);                 if(r>=0) C.pot=r;
+  r=fi(['encargado']);                if(r>=0) C.enc=r;
   console.log('Cols: LAT='+C.lat+' LNG='+C.lng+' EST='+C.est+' BAN='+C.ban);
 }
 
@@ -1479,6 +1507,8 @@ function rowToStation(row){
     zone: getZona(dep),
     lat: lat,
     lng: lng,
+    pot: (row[C.pot]||'').trim(),
+    enc: (row[C.enc]||'').trim(),
     events: events
   };
 }
@@ -1651,18 +1681,62 @@ function renderList(){
 }
 
 // ── FICHA ──
+// ── FOTOS: galeria por ID con fallback de extension (.jpg/.jpeg) ──
+var FOTO_CATS=['Transmisor interno','Transmisor frontal','Transmisor posterior','Caseta de transmision','Torre','Antenas'];
+var FOTO_EXTS=['jpg','jpeg','JPG','JPEG'];
+var FOTOS_BASE='https://malvaradob-bethel.github.io/fotos-estaciones/';
+var _FICHA_URLS=[];
+function galeriaHtml(s){
+  var id=(s.id||'').replace(/\s+/g,'');
+  _FICHA_URLS=[];
+  if(!id) return '';
+  var items='';
+  for(var fi=0; fi<6; fi++){
+    var url0=FOTOS_BASE+id+'_'+(fi+1)+'.'+FOTO_EXTS[0];
+    items+='<div class="foto-item" id="fitem-'+fi+'" onclick="openFoto('+fi+')">'+
+      '<img src="'+esc(url0)+'" loading="lazy" data-fi="'+fi+'" data-ei="0" data-id="'+esc(id)+'" '+
+      'onload="fotoOk('+fi+',this.src)" onerror="fotoNextExt(this)">'+
+      '<div class="foto-cap">'+(fi+1)+'. '+esc(FOTO_CATS[fi])+'</div></div>';
+  }
+  return '<div class="foto-gal-h">\uD83D\uDCF7 FOTOGRAFIAS</div><div class="foto-gal">'+items+'</div>';
+}
+function fotoOk(fi, src){ _FICHA_URLS[fi]=src; }
+function fotoNextExt(img){
+  var fi=parseInt(img.getAttribute('data-fi'),10);
+  var ei=parseInt(img.getAttribute('data-ei'),10)+1;
+  var id=img.getAttribute('data-id');
+  if(ei < FOTO_EXTS.length){
+    img.setAttribute('data-ei', ei);
+    img.src = FOTOS_BASE + id + '_' + (fi+1) + '.' + FOTO_EXTS[ei];
+  } else { fotoFalla(fi); }
+}
+function fotoFalla(fi){
+  var el=document.getElementById('fitem-'+fi);
+  if(!el) return;
+  el.className='foto-item empty'; el.onclick=null; _FICHA_URLS[fi]='';
+  el.innerHTML='<div class="foto-ph">'+(fi+1)+'</div><div class="foto-cap">'+esc(FOTO_CATS[fi])+'<br><span class="pend">pendiente</span></div>';
+}
+function openFoto(idx){
+  var url=_FICHA_URLS[idx]; if(!url) return;
+  document.getElementById('foto-lb-img').src=url;
+  document.getElementById('foto-lb-cap').textContent=(idx+1)+'. '+FOTO_CATS[idx];
+  document.getElementById('foto-lb').classList.add('on');
+}
+function closeFoto(){ document.getElementById('foto-lb').classList.remove('on'); }
+
 function selStation(id){
   SEL=id;
   var s=null;
   for(var i=0;i<ALL.length;i++){if(ALL[i].id===id){s=ALL[i];break;}}
   if(!s) return;
   renderList();
+  try{var _fe=document.getElementById('ficha');if(_fe)_fe.style.setProperty('border-top','3px solid '+sc(s.est),'important');}catch(e){}
   document.getElementById('fn').textContent=s.loc+' - '+s.dep;
   var rows=[
     ['BANDA',s.ban],['FRECUENCIA',s.fre],
     ['ESTADO','<span class="sbadge '+bc(s.est)+'" style="font-size:12px">'+s.est+'</span>'],
     ['PRESBITERIO',s.pre||'-'],['ZONA',s.zone],['RESPONSABLE',s.res||'-'],
-    ['NIVEL',s.niv||'-'],['COORDS',s.lat?s.lat.toFixed(5)+', '+s.lng.toFixed(5):'Sin coordenadas']
+    ['POTENCIA',s.pot||'-'],['ENCARGADO',s.enc||'-'],['NIVEL',s.niv||'-'],['COORDS',s.lat?s.lat.toFixed(5)+', '+s.lng.toFixed(5):'Sin coordenadas']
   ];
   var fg=rows.map(function(r){return '<div class="fr"><div class="fk">'+r[0]+'</div><div class="fv">'+r[1]+'</div></div>';}).join('');
   // ── Bloque destacado: ULTIMA ACTUALIZACION (columna I del CSV) ──
@@ -1672,6 +1746,7 @@ function selStation(id){
     var ultBlock='<div class="ult-act"><div class="ult-act-h">\uD83D\uDCCC ULTIMA ACTUALIZACION'+(ultDate?(' \u00B7 '+ultDate):'')+'</div><div class="ult-act-t">'+esc(ultText.trim())+'</div></div>';
     fg = ultBlock + fg;
   }
+  fg = fg + galeriaHtml(s);
   // Render events history
   var eventsHtml='';
   var isAdmin=CUR_USER&&CUR_USER.role==='admin';
@@ -1933,64 +2008,56 @@ function mkCableCluster(n){
   return L.divIcon({html:html,className:'',iconSize:[size,size],iconAnchor:[size/2,size/2]});
 }
 
+// ── Burbujas de chat (llamativos compactos por estacion) ──
+var STBUBBLES=[];
+function closeStBubbles(){ STBUBBLES.forEach(function(p){ try{p.remove();}catch(e){} }); STBUBBLES=[]; }
+function bubbleTap(id){ closeStBubbles(); selStation(id); }
+function bubbleContent(s){
+  var ult=(s.events&&s.events.length&&s.events[0].text)?s.events[0].text:(s.mot||'');
+  ult=(ult||'').trim();
+  if(ult.length>90) ult=ult.slice(0,90)+'\u2026';
+  return '<div class="cb-inner" onclick="bubbleTap(\''+s.id+'\')">'+
+    '<div class="cb-head">'+esc(s.loc)+' \u00B7 '+esc(s.ban)+'</div>'+
+    (ult?'<div class="cb-txt">'+esc(ult)+'</div>':'')+'</div>';
+}
+function openStBubbles(list, latlng){
+  closeStBubbles();
+  if(!list||!list.length) return;
+  var layout = list.length===1?['down']:(list.length===2?['right','left']:['right','left','down']);
+  var OFF={ right:[-100,-18], left:[100,-18], down:[0,-16] };
+  list.forEach(function(s,i){
+    var dir=layout[i]||'down';
+    var col=sc(s.est);
+    var p=L.popup({autoClose:false,closeOnClick:false,className:'cb-pop cb-'+dir,offset:OFF[dir],maxWidth:190,minWidth:120,closeButton:true,autoPan:false});
+    p.setLatLng(latlng).setContent(bubbleContent(s));
+    p.addTo(MAP);
+    var el=p.getElement();
+    if(el){
+      el.style.setProperty('--cb-col',col);
+      var wrap=el.querySelector('.leaflet-popup-content-wrapper');
+      if(wrap){ wrap.style.setProperty('border','2px solid '+col,'important'); }
+    }
+    STBUBBLES.push(p);
+  });
+}
 function renderMarkers(){
   if(!MAP) return;
+  closeStBubbles();
   MLIST.forEach(function(m){MAP.removeLayer(m);}); MLIST=[];
-  var zoom=MAP.getZoom();
   if(CABLE_ON){ renderCableMarkers(); return; }
   var pts=FILTERED.filter(function(s){return s.lat&&s.lng;});
   if(!pts.length) return;
-  if(zoom<=5){
-    // Cluster por departamento
-    var grp={};
-    pts.forEach(function(s){if(!grp[s.dep])grp[s.dep]=[];grp[s.dep].push(s);});
-    Object.keys(grp).forEach(function(dept){
-      var list=grp[dept],lat=0,lng=0;
-      list.forEach(function(s){lat+=s.lat;lng+=s.lng;});
-      lat/=list.length; lng/=list.length;
-      var color=domC(list);
-      var aa=list.filter(function(s){return s.est==='A.A';}).length;
-      var fa=list.filter(function(s){return s.est==='F.A';}).length;
-      var pp='<div class="pp-title">'+dept+'</div>'+
-        '<div class="pp-row"><span class="pp-k">TOTAL</span><span class="pp-v">'+list.length+'</span></div>'+
-        '<div class="pp-row"><span class="pp-k">AL AIRE</span><span class="pp-v" style="color:#2ecc71">'+aa+'</span></div>'+
-        '<div class="pp-row"><span class="pp-k">FUERA</span><span class="pp-v" style="color:#e74c3c">'+fa+'</span></div>'+
-        '<div class="pp-row"><span class="pp-k">N.I.</span><span class="pp-v" style="color:#f0b429">'+(list.length-aa-fa)+'</span></div>';
-      var m=L.marker([lat,lng],{icon:mkCluster(list.length,color,dept.slice(0,3).toUpperCase())});
-      m.bindTooltip(pp,{direction:'top',sticky:true,opacity:1,className:'st-tip-wrap'});
-      m.addTo(MAP); MLIST.push(m);
-    });
-  } else if(zoom<=9){
-    // Cluster por localidad
-    var grp={};
-    pts.forEach(function(s){var k=s.dep+'|'+s.loc;if(!grp[k])grp[k]=[];grp[k].push(s);});
-    Object.keys(grp).forEach(function(k){
-      var list=grp[k],lat=0,lng=0;
-      list.forEach(function(s){lat+=s.lat;lng+=s.lng;});
-      lat/=list.length; lng/=list.length;
-      var color=domC(list);
-      var icon=list.length>1?mkCluster(list.length,color):mkPt(list[0].est);
-      var pp='<div class="pp-title">'+list[0].loc+' ('+list[0].dep+')</div>'+
-        list.map(function(s){
-          return '<div class="pp-row"><span class="pp-k">'+s.ban+'</span>'+
-            '<span class="pp-v" style="color:'+sc(s.est)+'">'+s.fre+' - '+s.est+'</span></div>';
-        }).join('');
-      var m=L.marker([lat,lng],{icon:icon});
-      m.bindTooltip(pp,{direction:'top',sticky:true,opacity:1,className:'st-tip-wrap'});
-      if(list.length===1){(function(id){m.on('click',function(){selStation(id);});})(list[0].id);}
-      m.addTo(MAP); MLIST.push(m);
-    });
-  } else {
-    if(MAP_STYLE==='sat') activateSat();
-    pts.forEach(function(s){
-      var m=L.marker([s.lat,s.lng],{icon:mkPt(s.est)});
-      m.bindTooltip(mkPopup(s),{direction:'top',sticky:true,opacity:1,className:'st-tip-wrap'});
-      (function(sid){ m.on('click',function(){selStation(sid);}); })(s.id);
-      m.addTo(MAP); MLIST.push(m);
-    });
-  }
+  if(MAP_STYLE==='sat') activateSat();
+  var grp={};
+  pts.forEach(function(s){ var key=s.lat.toFixed(5)+','+s.lng.toFixed(5); if(!grp[key])grp[key]=[]; grp[key].push(s); });
+  pts.forEach(function(s){
+    var key=s.lat.toFixed(5)+','+s.lng.toFixed(5);
+    var group=grp[key];
+    var m=L.marker([s.lat,s.lng],{icon:mkPt(s.est)});
+    (function(ll, g){ m.on('click',function(){ openStBubbles(g, ll); }); })([s.lat,s.lng], group);
+    m.addTo(MAP); MLIST.push(m);
+  });
 }
-
 // ── TABLA ──
 function bpC(b){ var bn=(b||'').split(/[\s\/]/)[0]; return {FM:'fm',AM:'am',VHF:'vhf',UHF:'uhf',OM:'om'}[bn]||''; }
 function renderTable(){
@@ -2622,5 +2689,8 @@ document.addEventListener('keydown',function(e){
   }
 });
 </script>
+<div id="foto-lb" onclick="closeFoto()">
+  <div class="foto-lb-box"><img id="foto-lb-img" src="" alt=""><div id="foto-lb-cap"></div></div>
+</div>
 </body>
 </html>
