@@ -2816,6 +2816,43 @@ function showKmzLegend(legend){
   d.innerHTML='<div class="kl-h">Cobertura</div><div class="kl-lab">Mayor</div><div class="kl-bar">'+sw+'</div><div class="kl-lab">Menor</div>';
   document.body.appendChild(d);
 }
+function _kmzImgUrl(href, zip){
+  if(/^https?:/i.test(href)) return Promise.resolve(href);
+  var entry=zip.file(href)||zip.file(href.replace(/^.*\//,''))||zip.file(decodeURIComponent(href));
+  if(!entry) return Promise.resolve(null);
+  return entry.async('base64').then(function(b64){
+    var ext=(href.split('.').pop()||'png').toLowerCase();
+    var mime=(ext==='jpg'||ext==='jpeg')?'image/jpeg':(ext==='gif'?'image/gif':'image/png');
+    return 'data:'+mime+';base64,'+b64;
+  });
+}
+function kmzKeyBg(dataUrl){
+  return new Promise(function(res){
+    if(!/^data:/.test(dataUrl)){ res(dataUrl); return; }   // http (otro origen): no se puede procesar por CORS
+    var img=new Image();
+    img.onload=function(){
+      try{
+        var c=document.createElement('canvas'); c.width=img.naturalWidth; c.height=img.naturalHeight;
+        var x=c.getContext('2d'); x.drawImage(img,0,0);
+        var id=x.getImageData(0,0,c.width,c.height); var d=id.data;
+        // ¿ya tiene transparencia? -> no tocar
+        var transp=0, samp=0;
+        for(var k=3;k<d.length;k+=4000){ samp++; if(d[k]<250) transp++; }
+        if(samp>0 && transp/samp>0.05){ res(dataUrl); return; }
+        var TH=30;  // saturación: por debajo = gris/blanco = fondo
+        for(var i=0;i<d.length;i+=4){
+          var r=d[i],g=d[i+1],b=d[i+2];
+          var s=Math.max(r,g,b)-Math.min(r,g,b);
+          if(s<TH) d[i+3]=0;
+        }
+        x.putImageData(id,0,0);
+        res(c.toDataURL('image/png'));
+      }catch(e){ res(dataUrl); }
+    };
+    img.onerror=function(){ res(dataUrl); };
+    img.src=dataUrl;
+  });
+}
 function kmzBuildLayers(kmlText, zip){
   var dom=new DOMParser().parseFromString(kmlText,'text/xml');
   var styleMap=kmzParseStyles(dom);
@@ -2847,14 +2884,14 @@ function kmzBuildLayers(kmlText, zip){
           if(pp.length>=3){ var la=pp.map(function(p){return p[0];}), lo=pp.map(function(p){return p[1];});
             bounds=[[Math.min.apply(null,la),Math.min.apply(null,lo)],[Math.max.apply(null,la),Math.max.apply(null,lo)]]; } } } }
     if(!bounds) return;
-    zipImg(href, function(url){ L.imageOverlay(url,bounds,{opacity:0.6}).addTo(group); });
+    pending.push(_kmzImgUrl(href,zip).then(function(url){ if(!url) return; return kmzKeyBg(url).then(function(u2){ L.imageOverlay(u2,bounds,{opacity:0.7}).addTo(group); }); }));
   })(gos[i]); }
   var sos=dom.getElementsByTagName('ScreenOverlay');
   for(var s=0;s<sos.length;s++){ (function(so){
     var icon=so.getElementsByTagName('Icon')[0];
     var he=icon?icon.getElementsByTagName('href')[0]:null;
     var href=he?he.textContent.trim():null; if(!href) return;
-    zipImg(href, function(url){ screenImgs.push(url); });
+    pending.push(_kmzImgUrl(href,zip).then(function(url){ if(url) screenImgs.push(url); }));
   })(sos[s]); }
   var pls=dom.getElementsByTagName('Placemark');
   for(var p=0;p<pls.length;p++){ var pl=pls[p];
