@@ -650,6 +650,8 @@ html, body { height:100%; width:100%; overflow:hidden; position:fixed; top:0; le
 .popup-box{position:relative;max-width:100%;max-height:90vh;}
 .popup-x{position:absolute;top:8px;right:8px;width:34px;height:34px;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;border:1.5px solid rgba(255,255,255,.8);font-size:20px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:1;}
 .popup-img{display:block;max-width:100%;max-height:90vh;border-radius:12px;object-fit:contain;}
+
+.kmz-clear{background:var(--bg0,#1a1a1a);border:1px solid var(--line,#333);border-radius:8px;padding:6px 10px;font-size:12px;font-weight:600;color:var(--t0,#fff);cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.4);}
 </style>
 </head>
 <body>
@@ -1086,6 +1088,7 @@ html, body { height:100%; width:100%; overflow:hidden; position:fixed; top:0; le
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/jszip@3.10.1/dist/jszip.min.js"></script>
 <script>
 // ═══════════════════════════════════════════════════════════
 //  LECTURA EN LINEA (GitHub) - version movil
@@ -1800,7 +1803,7 @@ function selStation(id){
     var ultBlock='<div class="ult-act"><div class="ult-act-h">\uD83D\uDCCC ULTIMA ACTUALIZACION'+(ultDate?(' \u00B7 '+ultDate):'')+'</div><div class="ult-act-t">'+esc(ultText.trim())+'</div></div>';
     fg = ultBlock + fg;
   }
-  fg = fg + galeriaHtml(s) + docButtonHtml(s);
+  fg = fg + galeriaHtml(s) + docButtonHtml(s) + kmzButtonHtml(s);
   // Render events history
   var eventsHtml='';
   var isAdmin=CUR_USER&&CUR_USER.role==='admin';
@@ -2754,6 +2757,78 @@ function loadDocs(cb){
   fetch(GITHUB_DOCS_URL,{cache:'no-store'}).then(function(r){return r.json();})
    .then(function(j){ DOCS=j||{}; }).catch(function(){ DOCS={}; })
    .then(function(){ if(cb)cb(); });
+}
+var KMZ_LAYER=null, KMZ_CTRL=null;
+function kmzButtonHtml(s){
+  var id=(s.id||'').replace(/'/g,"\\'");
+  return '<button class="doc-btn" onclick="openKmz(\''+id+'\')">\uD83D\uDCE1 Ver cobertura</button>';
+}
+function kmzParseCoords(txt){
+  var out=[]; (txt||'').trim().split(/\s+/).forEach(function(tok){
+    var a=tok.split(','); if(a.length>=2){ var lng=parseFloat(a[0]), lat=parseFloat(a[1]);
+      if(!isNaN(lat)&&!isNaN(lng)) out.push([lat,lng]); }
+  }); return out;
+}
+function kmzBuildLayers(kmlText, zip){
+  var dom=new DOMParser().parseFromString(kmlText,'text/xml');
+  var group=L.featureGroup(); var pending=[];
+  var gos=dom.getElementsByTagName('GroundOverlay');
+  for(var i=0;i<gos.length;i++){ (function(go){
+    var box=go.getElementsByTagName('LatLonBox')[0]; if(!box) return;
+    function v(t){ var e=box.getElementsByTagName(t)[0]; return e?parseFloat(e.textContent):null; }
+    var N=v('north'), Sx=v('south'), E=v('east'), W=v('west');
+    var icon=go.getElementsByTagName('Icon')[0];
+    var hrefEl=icon?icon.getElementsByTagName('href')[0]:null;
+    var href=hrefEl?hrefEl.textContent.trim():null;
+    if(N==null||Sx==null||E==null||W==null||!href) return;
+    var bounds=[[Sx,W],[N,E]];
+    if(/^https?:/i.test(href)){ L.imageOverlay(href,bounds,{opacity:0.75}).addTo(group); return; }
+    var entry=zip.file(href)||zip.file(href.replace(/^.*\//,''))||zip.file(decodeURIComponent(href));
+    if(entry){ pending.push(entry.async('base64').then(function(b64){
+      var ext=(href.split('.').pop()||'png').toLowerCase();
+      var mime=(ext==='jpg'||ext==='jpeg')?'image/jpeg':(ext==='gif'?'image/gif':'image/png');
+      L.imageOverlay('data:'+mime+';base64,'+b64,bounds,{opacity:0.75}).addTo(group);
+    })); }
+  })(gos[i]); }
+  var pls=dom.getElementsByTagName('Placemark');
+  for(var p=0;p<pls.length;p++){ var pl=pls[p];
+    var polys=pl.getElementsByTagName('Polygon');
+    for(var q=0;q<polys.length;q++){ var c=polys[q].getElementsByTagName('coordinates')[0];
+      if(c){ var ll=kmzParseCoords(c.textContent); if(ll.length>2) L.polygon(ll,{color:'#e74c3c',weight:1,fillColor:'#e74c3c',fillOpacity:.22}).addTo(group); } }
+    var lns=pl.getElementsByTagName('LineString');
+    for(var r=0;r<lns.length;r++){ var c2=lns[r].getElementsByTagName('coordinates')[0];
+      if(c2){ var ll2=kmzParseCoords(c2.textContent); if(ll2.length>1) L.polyline(ll2,{color:'#4ea1ff',weight:2}).addTo(group); } }
+    var pts=pl.getElementsByTagName('Point');
+    for(var t=0;t<pts.length;t++){ var c3=pts[t].getElementsByTagName('coordinates')[0];
+      if(c3){ var ll3=kmzParseCoords(c3.textContent); if(ll3.length) L.circleMarker(ll3[0],{radius:5,color:'#fff',weight:1,fillColor:'#e74c3c',fillOpacity:1}).addTo(group); } }
+  }
+  return Promise.all(pending).then(function(){ return group; });
+}
+function clearKmz(){
+  if(KMZ_LAYER){ try{MAP.removeLayer(KMZ_LAYER);}catch(e){} KMZ_LAYER=null; }
+  if(KMZ_CTRL){ try{MAP.removeControl(KMZ_CTRL);}catch(e){} KMZ_CTRL=null; }
+}
+function openKmz(id){
+  var idns=(id||'').replace(/\s+/g,''); if(!idns) return;
+  if(typeof JSZip==='undefined'){ alert('Cargando libreria, intenta de nuevo en unos segundos.'); return; }
+  var url=FOTOS_BASE+idns+'.kmz';
+  fetch(url).then(function(r){ if(!r.ok) throw new Error('404'); return r.arrayBuffer(); })
+   .then(function(buf){ return JSZip.loadAsync(buf); })
+   .then(function(zip){
+      var kmlName=Object.keys(zip.files).find(function(n){ return /\.kml$/i.test(n); });
+      if(!kmlName) throw new Error('sin kml');
+      return zip.file(kmlName).async('string').then(function(kml){ return kmzBuildLayers(kml,zip); });
+   })
+   .then(function(group){
+      clearKmz(); KMZ_LAYER=group; group.addTo(MAP);
+      if(typeof closeFicha==='function') closeFicha();
+      try{ MAP.fitBounds(group.getBounds(),{padding:[30,30]}); }catch(e){}
+      KMZ_CTRL=L.control({position:'topright'});
+      KMZ_CTRL.onAdd=function(){ var d=L.DomUtil.create('div','kmz-clear'); d.innerHTML='\u2715 Cobertura';
+        L.DomEvent.disableClickPropagation(d); d.onclick=function(){ clearKmz(); }; return d; };
+      KMZ_CTRL.addTo(MAP);
+   })
+   .catch(function(e){ alert('No hay cobertura cargada para esta estacion, o no se pudo leer el KMZ.'); });
 }
 function docButtonHtml(s){
   var id=(s.id||'').replace(/'/g,"\\'");
