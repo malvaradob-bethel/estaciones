@@ -2894,19 +2894,31 @@ function clearKmz(){
   var lg=document.getElementById('kmz-legend'); if(lg) lg.remove();
   var so=document.getElementById('kmz-screenov'); if(so) so.remove();
 }
-function openKmz(id){
-  var idns=(id||'').replace(/\s+/g,''); if(!idns) return;
-  if(typeof JSZip==='undefined'){ alert('Cargando libreria, intenta de nuevo en unos segundos.'); return; }
-  var url=FOTOS_BASE+idns+'.kmz';
-  fetch(url).then(function(r){ if(!r.ok) throw new Error('404'); return r.arrayBuffer(); })
-   .then(function(buf){ return JSZip.loadAsync(buf); })
-   .then(function(zip){
+function _kmzFetchBuf(url){ return fetch(url).then(function(r){ if(!r.ok) throw new Error('404'); return r.arrayBuffer(); }); }
+function _kmzIsZip(buf){ var b=new Uint8Array(buf.slice(0,2)); return b[0]===0x50 && b[1]===0x4B; }
+function _bufToKmlAndZip(buf){
+  if(_kmzIsZip(buf)){
+    if(typeof JSZip==='undefined') return Promise.reject(new Error('Falta JSZip para leer .kmz'));
+    return JSZip.loadAsync(buf).then(function(zip){
       var kmlName=Object.keys(zip.files).find(function(n){ return /\.kml$/i.test(n); });
       if(!kmlName) throw new Error('sin kml');
-      return zip.file(kmlName).async('string').then(function(kml){ return kmzBuildLayers(kml,zip); });
-   })
+      return zip.file(kmlName).async('string').then(function(kml){ return {kml:kml, zip:zip}; });
+    });
+  }
+  var txt;
+  try{ txt=new TextDecoder('utf-8').decode(new Uint8Array(buf)); }
+  catch(e){ txt=String.fromCharCode.apply(null, new Uint8Array(buf)); }
+  return Promise.resolve({kml:txt, zip:{ file:function(){ return null; } }});  // .kml suelto: sin imágenes embebidas
+}
+function openKmz(id){
+  var idns=(id||'').replace(/\s+/g,''); if(!idns) return;
+  var base=FOTOS_BASE+idns;
+  _kmzFetchBuf(base+'.kmz').catch(function(){ return _kmzFetchBuf(base+'.kml'); })
+   .then(function(buf){ return _bufToKmlAndZip(buf); })
+   .then(function(o){ return kmzBuildLayers(o.kml, o.zip); })
    .then(function(group){
-      clearKmz(); KMZ_LAYER=group; group.addTo(MAP); showKmzLegend(group._legend); showKmzScreenOverlays(group._screenImgs);
+      clearKmz(); KMZ_LAYER=group; group.addTo(MAP);
+      showKmzLegend(group._legend); showKmzScreenOverlays(group._screenImgs);
       if(typeof closeFicha==='function') closeFicha();
       try{ MAP.fitBounds(group.getBounds(),{padding:[30,30]}); }catch(e){}
       KMZ_CTRL=L.control({position:'topright'});
@@ -2914,7 +2926,7 @@ function openKmz(id){
         L.DomEvent.disableClickPropagation(d); d.onclick=function(){ clearKmz(); }; return d; };
       KMZ_CTRL.addTo(MAP);
    })
-   .catch(function(e){ alert('No hay cobertura cargada para esta estacion, o no se pudo leer el KMZ.'); });
+   .catch(function(e){ alert('No se encontró cobertura para esta estación (.kmz ni .kml), o no se pudo leer el archivo.'); });
 }
 function docButtonHtml(s){
   var id=(s.id||'').replace(/'/g,"\\'");
