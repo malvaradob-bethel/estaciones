@@ -652,6 +652,15 @@ html, body { height:100%; width:100%; overflow:hidden; position:fixed; top:0; le
 .popup-img{display:block;max-width:100%;max-height:90vh;border-radius:12px;object-fit:contain;}
 
 .kmz-clear{background:var(--bg0,#1a1a1a);border:1px solid var(--line,#333);border-radius:8px;padding:6px 10px;font-size:12px;font-weight:600;color:var(--t0,#fff);cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.4);}
+
+#kmz-legend{position:fixed;left:10px;bottom:80px;z-index:1200;background:rgba(20,20,24,.9);border:1px solid #333;border-radius:8px;padding:7px 9px;color:#fff;font-size:11px;text-align:center;box-shadow:0 2px 10px rgba(0,0,0,.4);}
+#kmz-legend .kl-h{font-weight:700;margin-bottom:4px;}
+#kmz-legend .kl-lab{font-size:9px;color:#bbb;line-height:1.4;}
+#kmz-legend .kl-bar{display:flex;flex-direction:column;width:26px;margin:2px auto;border:1px solid rgba(255,255,255,.25);border-radius:3px;overflow:hidden;}
+#kmz-legend .kl-sw{display:block;height:9px;}
+
+#kmz-screenov{position:fixed;left:8px;bottom:78px;z-index:1200;display:flex;flex-direction:column;gap:6px;}
+#kmz-screenov img{max-width:120px;max-height:200px;border:1px solid #333;border-radius:6px;background:rgba(255,255,255,.92);box-shadow:0 2px 8px rgba(0,0,0,.4);}
 </style>
 </head>
 <body>
@@ -2769,44 +2778,121 @@ function kmzParseCoords(txt){
       if(!isNaN(lat)&&!isNaN(lng)) out.push([lat,lng]); }
   }); return out;
 }
+function kmzColorFromKml(abgr){
+  if(!abgr) return null; abgr=abgr.replace(/[^0-9a-fA-F]/g,'').toLowerCase();
+  if(abgr.length<8) return null;
+  return {color:'#'+abgr.substr(6,2)+abgr.substr(4,2)+abgr.substr(2,2), opacity:parseInt(abgr.substr(0,2),16)/255};
+}
+function kmzParseStyleEl(st){
+  var o={};
+  var ps=st.getElementsByTagName('PolyStyle')[0];
+  if(ps){ var c=ps.getElementsByTagName('color')[0]; if(c) o.fill=kmzColorFromKml(c.textContent);
+    var ol=ps.getElementsByTagName('outline')[0]; o.outline=!(ol&&ol.textContent.trim()==='0');
+    var fl=ps.getElementsByTagName('fill')[0]; o.fillOn=!(fl&&fl.textContent.trim()==='0'); }
+  var ls=st.getElementsByTagName('LineStyle')[0];
+  if(ls){ var lc=ls.getElementsByTagName('color')[0]; if(lc) o.line=kmzColorFromKml(lc.textContent);
+    var w=ls.getElementsByTagName('width')[0]; o.width=w?parseFloat(w.textContent):1; }
+  return o;
+}
+function kmzParseStyles(dom){
+  var map={};
+  var sts=dom.getElementsByTagName('Style');
+  for(var i=0;i<sts.length;i++){ var id=sts[i].getAttribute('id'); if(id) map['#'+id]=kmzParseStyleEl(sts[i]); }
+  var sms=dom.getElementsByTagName('StyleMap');
+  for(var j=0;j<sms.length;j++){ var id=sms[j].getAttribute('id'); if(!id) continue;
+    var prs=sms[j].getElementsByTagName('Pair');
+    for(var p=0;p<prs.length;p++){ var k=prs[p].getElementsByTagName('key')[0];
+      if(k && k.textContent.trim()==='normal'){ var su=prs[p].getElementsByTagName('styleUrl')[0]; if(su) map['#'+id]=su.textContent.trim(); } } }
+  for(var key in map){ if(typeof map[key]==='string') map[key]=map[map[key]]||{}; }
+  return map;
+}
+function showKmzLegend(legend){
+  var old=document.getElementById('kmz-legend'); if(old) old.remove();
+  if(!legend) return; var keys=Object.keys(legend); if(keys.length<2) return;
+  keys.sort(function(a,b){ return (parseInt(a.replace(/\D/g,''),10)||0)-(parseInt(b.replace(/\D/g,''),10)||0); });
+  var sw='';
+  for(var i=keys.length-1;i>=0;i--){ sw+='<span class="kl-sw" style="background:'+legend[keys[i]]+'"></span>'; }
+  var d=document.createElement('div'); d.id='kmz-legend';
+  d.innerHTML='<div class="kl-h">Cobertura</div><div class="kl-lab">Mayor</div><div class="kl-bar">'+sw+'</div><div class="kl-lab">Menor</div>';
+  document.body.appendChild(d);
+}
 function kmzBuildLayers(kmlText, zip){
   var dom=new DOMParser().parseFromString(kmlText,'text/xml');
+  var styleMap=kmzParseStyles(dom);
+  var rend=L.canvas({padding:0.3});
   var group=L.featureGroup(); var pending=[];
-  var gos=dom.getElementsByTagName('GroundOverlay');
-  for(var i=0;i<gos.length;i++){ (function(go){
-    var box=go.getElementsByTagName('LatLonBox')[0]; if(!box) return;
-    function v(t){ var e=box.getElementsByTagName(t)[0]; return e?parseFloat(e.textContent):null; }
-    var N=v('north'), Sx=v('south'), E=v('east'), W=v('west');
-    var icon=go.getElementsByTagName('Icon')[0];
-    var hrefEl=icon?icon.getElementsByTagName('href')[0]:null;
-    var href=hrefEl?hrefEl.textContent.trim():null;
-    if(N==null||Sx==null||E==null||W==null||!href) return;
-    var bounds=[[Sx,W],[N,E]];
-    if(/^https?:/i.test(href)){ L.imageOverlay(href,bounds,{opacity:0.75}).addTo(group); return; }
+  var FILL_OP=0.5; var legend={}; var screenImgs=[];
+  function zipImg(href, cb){
+    if(/^https?:/i.test(href)){ cb(href); return; }
     var entry=zip.file(href)||zip.file(href.replace(/^.*\//,''))||zip.file(decodeURIComponent(href));
     if(entry){ pending.push(entry.async('base64').then(function(b64){
       var ext=(href.split('.').pop()||'png').toLowerCase();
       var mime=(ext==='jpg'||ext==='jpeg')?'image/jpeg':(ext==='gif'?'image/gif':'image/png');
-      L.imageOverlay('data:'+mime+';base64,'+b64,bounds,{opacity:0.75}).addTo(group);
+      cb('data:'+mime+';base64,'+b64);
     })); }
+  }
+  var gos=dom.getElementsByTagName('GroundOverlay');
+  for(var i=0;i<gos.length;i++){ (function(go){
+    var icon=go.getElementsByTagName('Icon')[0];
+    var hrefEl=icon?icon.getElementsByTagName('href')[0]:null;
+    var href=hrefEl?hrefEl.textContent.trim():null; if(!href) return;
+    var bounds=null;
+    var box=go.getElementsByTagName('LatLonBox')[0];
+    if(box){ function v(t){ var e=box.getElementsByTagName(t)[0]; return e?parseFloat(e.textContent):null; }
+      var N=v('north'),Sx=v('south'),E=v('east'),W=v('west');
+      if(N!=null&&Sx!=null&&E!=null&&W!=null) bounds=[[Sx,W],[N,E]]; }
+    if(!bounds){ var q=go.getElementsByTagName('gx:LatLonQuad')[0]||go.getElementsByTagName('LatLonQuad')[0];
+      if(q){ var cq=q.getElementsByTagName('gx:coordinates')[0]||q.getElementsByTagName('coordinates')[0];
+        if(cq){ var pp=kmzParseCoords(cq.textContent);
+          if(pp.length>=3){ var la=pp.map(function(p){return p[0];}), lo=pp.map(function(p){return p[1];});
+            bounds=[[Math.min.apply(null,la),Math.min.apply(null,lo)],[Math.max.apply(null,la),Math.max.apply(null,lo)]]; } } } }
+    if(!bounds) return;
+    zipImg(href, function(url){ L.imageOverlay(url,bounds,{opacity:0.6}).addTo(group); });
   })(gos[i]); }
+  var sos=dom.getElementsByTagName('ScreenOverlay');
+  for(var s=0;s<sos.length;s++){ (function(so){
+    var icon=so.getElementsByTagName('Icon')[0];
+    var he=icon?icon.getElementsByTagName('href')[0]:null;
+    var href=he?he.textContent.trim():null; if(!href) return;
+    zipImg(href, function(url){ screenImgs.push(url); });
+  })(sos[s]); }
   var pls=dom.getElementsByTagName('Placemark');
   for(var p=0;p<pls.length;p++){ var pl=pls[p];
+    var inl=pl.getElementsByTagName('Style')[0];
+    var stl=null, skey=null;
+    if(inl){ stl=kmzParseStyleEl(inl); }
+    else { var su=pl.getElementsByTagName('styleUrl')[0]; if(su){ skey=su.textContent.trim(); stl=styleMap[skey]; } }
+    stl=stl||{};
+    var fill=stl.fill?stl.fill.color:'#e74c3c';
+    var line=stl.line?stl.line.color:fill;
+    var hasOut=stl.outline!==false;
+    var lw=hasOut?(stl.width||0.8):0;
     var polys=pl.getElementsByTagName('Polygon');
     for(var q=0;q<polys.length;q++){ var c=polys[q].getElementsByTagName('coordinates')[0];
-      if(c){ var ll=kmzParseCoords(c.textContent); if(ll.length>2) L.polygon(ll,{color:'#e74c3c',weight:1,fillColor:'#e74c3c',fillOpacity:.22}).addTo(group); } }
+      if(c){ var ll=kmzParseCoords(c.textContent);
+        if(ll.length>2){ L.polygon(ll,{renderer:rend,stroke:hasOut,color:line,weight:lw||0.5,fillColor:fill,fillOpacity:FILL_OP}).addTo(group);
+          if(skey) legend[skey]=fill; } } }
     var lns=pl.getElementsByTagName('LineString');
     for(var r=0;r<lns.length;r++){ var c2=lns[r].getElementsByTagName('coordinates')[0];
-      if(c2){ var ll2=kmzParseCoords(c2.textContent); if(ll2.length>1) L.polyline(ll2,{color:'#4ea1ff',weight:2}).addTo(group); } }
+      if(c2){ var ll2=kmzParseCoords(c2.textContent); if(ll2.length>1) L.polyline(ll2,{renderer:rend,color:line,weight:(stl.width||2)}).addTo(group); } }
     var pts=pl.getElementsByTagName('Point');
     for(var t=0;t<pts.length;t++){ var c3=pts[t].getElementsByTagName('coordinates')[0];
-      if(c3){ var ll3=kmzParseCoords(c3.textContent); if(ll3.length) L.circleMarker(ll3[0],{radius:5,color:'#fff',weight:1,fillColor:'#e74c3c',fillOpacity:1}).addTo(group); } }
+      if(c3){ var ll3=kmzParseCoords(c3.textContent); if(ll3.length) L.circleMarker(ll3[0],{renderer:rend,radius:5,color:'#fff',weight:1,fillColor:(stl.fill?stl.fill.color:'#e74c3c'),fillOpacity:1}).addTo(group); } }
   }
-  return Promise.all(pending).then(function(){ return group; });
+  return Promise.all(pending).then(function(){ group._legend=legend; group._screenImgs=screenImgs; return group; });
+}
+function showKmzScreenOverlays(imgs){
+  var old=document.getElementById('kmz-screenov'); if(old) old.remove();
+  if(!imgs||!imgs.length) return;
+  var d=document.createElement('div'); d.id='kmz-screenov';
+  imgs.forEach(function(u){ var im=document.createElement('img'); im.src=u; d.appendChild(im); });
+  document.body.appendChild(d);
 }
 function clearKmz(){
   if(KMZ_LAYER){ try{MAP.removeLayer(KMZ_LAYER);}catch(e){} KMZ_LAYER=null; }
   if(KMZ_CTRL){ try{MAP.removeControl(KMZ_CTRL);}catch(e){} KMZ_CTRL=null; }
+  var lg=document.getElementById('kmz-legend'); if(lg) lg.remove();
+  var so=document.getElementById('kmz-screenov'); if(so) so.remove();
 }
 function openKmz(id){
   var idns=(id||'').replace(/\s+/g,''); if(!idns) return;
@@ -2820,7 +2906,7 @@ function openKmz(id){
       return zip.file(kmlName).async('string').then(function(kml){ return kmzBuildLayers(kml,zip); });
    })
    .then(function(group){
-      clearKmz(); KMZ_LAYER=group; group.addTo(MAP);
+      clearKmz(); KMZ_LAYER=group; group.addTo(MAP); showKmzLegend(group._legend); showKmzScreenOverlays(group._screenImgs);
       if(typeof closeFicha==='function') closeFicha();
       try{ MAP.fitBounds(group.getBounds(),{padding:[30,30]}); }catch(e){}
       KMZ_CTRL=L.control({position:'topright'});
