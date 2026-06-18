@@ -125,7 +125,6 @@ html, body { height:100%; font-family:var(--font); background:var(--bg0); color:
 #tog { background:var(--bg2); border:1px solid var(--line2); color:var(--t1); width:32px; height:32px; border-radius:var(--r); cursor:pointer; font-size:14px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
 #tog:hover { color:var(--t0); }
 .topright { display:flex; align-items:center; gap:7px; flex-wrap:nowrap; }
-.vtabs { display:flex; gap:3px; }
 .vt { padding:5px 12px; font-size:12px; font-weight:600; font-family:var(--font); background:transparent; border:1px solid var(--line); border-radius:5px; color:var(--t2); cursor:pointer; transition:all .12s; }
 .vt:hover { color:var(--t0); }
 .vt.on { background:var(--bg3); border-color:var(--acc); color:var(--acc); }
@@ -136,8 +135,6 @@ html, body { height:100%; font-family:var(--font); background:var(--bg0); color:
 .tbtn.imp:hover { background:rgba(79,142,247,.28); }
 .tbtn.exp { background:rgba(46,204,113,.1); border-color:var(--grn); color:var(--grn); }
 .tbtn.exp:hover { background:rgba(46,204,113,.2); }
-.admin-only { display:none !important; }
-body.is-admin .admin-only { display:inline-flex !important; }
 
 /* MAP */
 #map-v { flex:1; display:flex; overflow:hidden; position:relative; }
@@ -160,8 +157,6 @@ body.is-admin .admin-only { display:inline-flex !important; }
 
 /* TABLE */
 
-#tbl-v::-webkit-scrollbar { width:4px; height:4px; }
-#tbl-v::-webkit-scrollbar-thumb { background:var(--bg4); border-radius:2px; }
 .dtbl { width:100%; border-collapse:collapse; min-width:880px; }
 .dtbl th { background:var(--bg2); font-size:10px; font-family:var(--mono); color:var(--t2); letter-spacing:1.5px; padding:9px 11px; text-align:left; border-bottom:1px solid var(--line2); position:sticky; top:0; z-index:5; }
 .dtbl td { padding:8px 11px; font-size:13px; border-bottom:1px solid var(--line); vertical-align:middle; }
@@ -271,34 +266,13 @@ body.is-admin .admin-only { display:inline-flex !important; }
 .btn-prim{padding:10px 20px;background:var(--acc);border:none;color:#fff;font-family:var(--font);font-size:13px;font-weight:600;border-radius:var(--r);cursor:pointer;transition:opacity .15s}
 .btn-prim:hover{opacity:.88}
 .btn-prim.full{width:100%}
-
-/* Admin visibility via body class — overrides .admin-only display:none */
-body.is-admin .admin-only { display: inline-flex !important; }
-body.is-admin .admin-only.tbtn { display: inline-flex !important; }
-body.is-admin .btn-new { display: inline-flex !important; }
-body.is-admin .admin-only { display: inline-flex !important; }
-body.is-admin #th-acciones { display: table-cell !important; }
 /* Non-admin: keep hidden */
 #th-acciones { display: none; }
 /* td-act: no pointer interference */
 .td-act { white-space: nowrap; }
 
-/* ── VISIBILIDAD CABLEOPERADORES (admin + distribuidor) ── */
-.cable-only { display:none !important; }
-body.is-admin .cable-only, body.is-cable .cable-only { display:inline-flex !important; }
-/* topbar cable buttons */
-body.is-admin .cable-act, body.is-cable .cable-act { display:inline-flex !important; }
-.cable-act { display:none !important; }
-
 /* ── VISTA CABLEOPERADORES ── */
 
-#cable-v .cable-toolbar { display:flex; align-items:center; gap:8px; padding:10px 14px;
-  border-bottom:1px solid var(--line); background:var(--bg1); flex-wrap:wrap; position:sticky; top:0; z-index:5; }
-#cable-v .cable-toolbar .csearch { flex:1; min-width:160px; padding:8px 12px; background:var(--bg2);
-  border:1px solid var(--line2); border-radius:var(--r); color:var(--t0); font-family:var(--font); font-size:13px; outline:none; }
-#cable-v .cable-toolbar .csearch:focus { border-color:var(--acc); }
-#cable-v .cable-toolbar select { padding:8px 10px; background:var(--bg2); border:1px solid var(--line2);
-  border-radius:var(--r); color:var(--t0); font-family:var(--font); font-size:12px; outline:none; }
 .cable-count { font-size:11px; font-family:var(--mono); color:var(--t2); white-space:nowrap; }
 .ctbl { width:100%; border-collapse:collapse; font-size:12px; }
 .ctbl th { position:sticky; top:53px; background:var(--bg1); z-index:4; font-size:10px; letter-spacing:.5px;
@@ -399,13 +373,10 @@ body.is-admin .cable-act, body.is-cable .cable-act { display:inline-flex !import
 /* Pestañas: ocultas por defecto, se muestran segun permiso */
             
           
-#t-users { display:none; }          
 /* Pill CABLE en mapa */
 #pill-cable { display:none; }       
 /* Incidencias / registros (ficha) */
-.freg { display:none !important; }  
-/* Toolbar cableros (+ Cablero/Imp/Exp) ya usa .cable-act -> ligar a can-cableedit */
-.cable-act { display:none !important; }
+.freg { display:none !important; }
 
 /* Vista de usuarios */
 
@@ -451,14 +422,10 @@ body.is-admin .cable-act, body.is-cable .cable-act { display:inline-flex !import
 .ubtn-del:hover { background:rgba(231,76,60,.22); }
 .ubtn-del:disabled { opacity:.3; cursor:not-allowed; }
 
-/* Superadmin: solo USUARIOS (ocultar mapa, estilos, acerca de) */
-#t-map { display:none; }    body.can-map #t-map { display:inline-flex; }
-#t-about { display:none; }  body.can-map #t-about { display:inline-flex; }
-body:not(.can-map) #map-style-tabs { display:none !important; }
 
 
 /* Boton Actualizar + indicador (solo para visores User/Invitado) */
-.visor-only { display:none; }
+.visor-only { display:inline-flex; }
 
 .refresh-btn { align-items:center; gap:6px; padding:6px 13px; border-radius:20px; font-family:var(--font);
   font-size:12px; font-weight:600; cursor:pointer; white-space:nowrap; flex-shrink:0;
@@ -1002,7 +969,7 @@ body.no-sim #btn-sim{display:none !important;}
         <div><div class="bname">RED R&amp;T</div><div class="bsub">MONITOREO</div></div>
         <button id="sb-close" onclick="toggleSB()" title="Ocultar menu">&#x2715;</button>
       </div>
-      <button class="btn-new admin-only" onclick="openForm(null)">+ NUEVA</button>
+      
     </div>
     <div class="stats">
       <div class="sbox s-aa on" id="box-aa" onclick="setSF('AA')"><div class="v" id="c-aa">0</div><div class="l">AL AIRE</div></div>
@@ -1032,8 +999,8 @@ body.no-sim #btn-sim{display:none !important;}
         <div class="fn" id="fn"></div>
         <div class="fbtns">
           <button class="freg" onclick="openIncModal()">+ Incidencia</button>
-          <button class="fedit admin-only" onclick="editSel()">&#9998; Editar</button>
-          <button class="fdel admin-only" onclick="delSel()">&#x2715; Borrar</button>
+          
+          
           <button class="fclose" onclick="closeFicha()">&#x2715;</button>
         </div>
       </div>
@@ -1070,12 +1037,12 @@ body.no-sim #btn-sim{display:none !important;}
           <button class="map-style-btn" data-style="sat" onclick="setMapStyle('sat')" title="Satelital al acercar (zoom 13+)">&#x1F6F0; Sat</button>
         </div>
         <div id="conbar">Sistema listo</div>
-        <button class="tbtn imp admin-only" onclick="openImport()">&#8595; Importar</button>
-        <button class="tbtn exp admin-only" onclick="exportCSV()">&#8593; Exportar</button>
-        <button class="tbtn admin-only" onclick="openForm(null)">+ Nueva</button>
-        <button class="tbtn cable-act" onclick="openCableForm(null)" style="background:rgba(155,89,182,.15);border-color:var(--pur);color:var(--pur)">+ Cablero</button>
-        <button class="tbtn cable-act" onclick="openCableImport()" style="background:rgba(155,89,182,.12);border-color:var(--pur);color:var(--pur)">&#8595; Imp. cable</button>
-        <button class="tbtn cable-act" onclick="exportCableCSV()" style="background:rgba(155,89,182,.12);border-color:var(--pur);color:var(--pur)">&#8593; Exp. cable</button>
+        
+        
+        
+        
+        
+        
         <button class="tbtn" onclick="logout()">Salir</button>
       </div>
     </div>
@@ -1353,10 +1320,6 @@ function getZona(dep){
 }
 
 // ── ROLES Y PERMISOS ──
-var ROLE_NAMES = {
-  superadmin:'Superadmin', admin:'Administrador', gestion:'Gestion',
-  cable:'Distribuidor', consulta:'Consulta', invitado:'Invitado'
-};
 // Permisos por rol
 var ROLE_PERMS = {
   consulta: { map:1, sim:1, kmz:1, docs:1 },
