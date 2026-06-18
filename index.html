@@ -159,7 +159,7 @@ body.is-admin .admin-only { display:inline-flex !important; }
 .ldot { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
 
 /* TABLE */
-#tbl-v { flex:1; overflow:auto; display:none; padding:12px; }
+
 #tbl-v::-webkit-scrollbar { width:4px; height:4px; }
 #tbl-v::-webkit-scrollbar-thumb { background:var(--bg4); border-radius:2px; }
 .dtbl { width:100%; border-collapse:collapse; min-width:880px; }
@@ -291,7 +291,7 @@ body.is-admin .cable-act, body.is-cable .cable-act { display:inline-flex !import
 .cable-act { display:none !important; }
 
 /* ── VISTA CABLEOPERADORES ── */
-#cable-v { display:none; flex:1; overflow:auto; padding:0; }
+
 #cable-v .cable-toolbar { display:flex; align-items:center; gap:8px; padding:10px 14px;
   border-bottom:1px solid var(--line); background:var(--bg1); flex-wrap:wrap; position:sticky; top:0; z-index:5; }
 #cable-v .cable-toolbar .csearch { flex:1; min-width:160px; padding:8px 12px; background:var(--bg2);
@@ -397,18 +397,18 @@ body.is-admin .cable-act, body.is-cable .cable-act { display:inline-flex !import
 
 /* ── GATING POR PERMISOS ── */
 /* Pestañas: ocultas por defecto, se muestran segun permiso */
-#t-tbl { display:none; }            body.can-stationsview #t-tbl { display:inline-flex; }
-#t-cable { display:none; }          body.can-cabletable #t-cable { display:inline-flex; }
-#t-users { display:none; }          body.can-users #t-users { display:inline-flex; }
+            
+          
+#t-users { display:none; }          
 /* Pill CABLE en mapa */
-#pill-cable { display:none; }       body.can-cablemap #pill-cable { display:inline-flex; }
+#pill-cable { display:none; }       
 /* Incidencias / registros (ficha) */
-.freg { display:none !important; }  body.can-incid .freg { display:inline-flex !important; }
+.freg { display:none !important; }  
 /* Toolbar cableros (+ Cablero/Imp/Exp) ya usa .cable-act -> ligar a can-cableedit */
 .cable-act { display:none !important; }
-body.can-cableedit .cable-act { display:inline-flex !important; }
+
 /* Vista de usuarios */
-#users-v { display:none; flex:1; overflow:auto; padding:0; }
+
 .utbl { width:100%; border-collapse:collapse; font-size:13px; }
 .utbl th { position:sticky; top:0; background:var(--bg1); z-index:3; font-size:10px; letter-spacing:.5px;
   text-transform:uppercase; color:var(--t1); padding:11px 12px; text-align:left; border-bottom:1px solid var(--line2); }
@@ -459,7 +459,7 @@ body:not(.can-map) #map-style-tabs { display:none !important; }
 
 /* Boton Actualizar + indicador (solo para visores User/Invitado) */
 .visor-only { display:none; }
-body.is-visor .visor-only { display:inline-flex; }
+
 .refresh-btn { align-items:center; gap:6px; padding:6px 13px; border-radius:20px; font-family:var(--font);
   font-size:12px; font-weight:600; cursor:pointer; white-space:nowrap; flex-shrink:0;
   background:rgba(46,204,113,.14); border:1px solid var(--grn); color:var(--grn); transition:all .15s; }
@@ -478,7 +478,7 @@ html, body { height:100%; width:100%; overflow:hidden; position:fixed; top:0; le
 #topbar { flex-shrink:0; display:flex; align-items:center; gap:6px; padding:8px 10px;
   flex-wrap:wrap; min-height:50px; z-index:1300; }
 #topbar .topright { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-left:auto; }
-#topbar .vtabs { display:none; }
+#topbar 
 #topbar #conbar { display:none; }
 #topbar .topright .tbtn { display:none; }
 .map-style-tabs { display:flex !important; gap:4px; }
@@ -522,7 +522,7 @@ html, body { height:100%; width:100%; overflow:hidden; position:fixed; top:0; le
   background:rgba(231,76,60,.12); border:1px solid var(--red); color:var(--red); font-weight:600; }
 
 /* Ocultar vistas de escritorio en movil */
-#tbl-v, #cable-v, #users-v { display:none !important; }
+
 
 /* Panel de datos offline (en el cajon) */
 .off-panel { padding:12px; border-bottom:1px solid var(--line); display:flex; flex-direction:column; gap:8px; }
@@ -720,6 +720,7 @@ html, body { height:100%; width:100%; overflow:hidden; position:fixed; top:0; le
 .cov-lg-erp{margin-top:5px;padding-top:4px;border-top:1px solid var(--line);color:var(--t2);font-family:var(--mono,monospace);font-size:10.5px;}
 
 #btn-sim{display:inline-flex;align-items:center;justify-content:center;}
+body.no-sim #btn-sim{display:none !important;}
 #sim-station{width:100%;padding:9px;border-radius:8px;background:var(--bg2,#222);border:1px solid var(--line,#333);color:var(--t0,#fff);font-size:14px;}
 .prem-bg{display:none;position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,.7);align-items:center;justify-content:center;padding:20px;}
 .prem-bg.on{display:flex;}
@@ -1062,13 +1063,7 @@ html, body { height:100%; width:100%; overflow:hidden; position:fixed; top:0; le
       <button id="btn-import" onclick="openOffSheet()" title="Importar / descargar datos">&#10515;</button><button id="btn-sim" onclick="openSimM()" title="Simulación de cobertura"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="11" x2="12" y2="21"/><circle cx="12" cy="9" r="1.6" fill="currentColor" stroke="none"/><path d="M8.8 6.2a4.5 4.5 0 0 1 6.4 0"/><path d="M6.4 4a8 8 0 0 1 11.2 0"/></svg></button>
       <div id="net-badge" class="net-badge">⏳ --</div>
       <div class="topright">
-        <div class="vtabs">
-          <button class="vt about-btn" id="t-about" onclick="openAbout()" title="Acerca de esta plataforma">&#9432; Acerca de</button>
-          <button class="vt on" id="t-map" onclick="setView('map')">MAPA</button>
-          <button class="vt" id="t-tbl" onclick="setView('table')">ESTACIONES</button>
-          <button class="vt" id="t-cable" onclick="setView('cable')">CABLEOPERADORES</button>
-          <button class="vt" id="t-users" onclick="setView('users')" style="border-color:var(--pur);color:var(--pur)">&#128100; USUARIOS</button>
-        </div>
+        
         <div class="map-style-tabs" id="map-style-tabs">
           <button class="map-style-btn on" data-style="dark" onclick="setMapStyle('dark')" title="Vista oscura">&#9681; Oscuro</button>
           <button class="map-style-btn" data-style="light" onclick="setMapStyle('light')" title="Vista clara">&#9728; Claro</button>
@@ -1092,64 +1087,11 @@ html, body { height:100%; width:100%; overflow:hidden; position:fixed; top:0; le
         <div class="leg"><div class="ldot" style="background:var(--yel)"></div>No Instalada (N.I)</div>
       </div>
     </div>
-    <div id="tbl-v">
-      <table class="dtbl">
-        <thead><tr>
-          <th style="width:44px">N°</th>
-          <th>LOCALIDAD</th>
-          <th>DPTO.</th>
-          <th style="width:60px">BANDA</th>
-          <th style="width:72px">FREC.</th>
-          <th style="width:60px">PRESB.</th>
-          <th style="width:64px">ESTADO</th>
-          <th style="width:68px">ZONA</th>
-          <th id="th-acciones" style="width:160px;display:none">ACCIONES</th>
-          <th style="width:116px" id="th-registros">REGISTROS</th>
-        </tr></thead>
-        <tbody id="tb"></tbody>
-      </table>
-    </div>
+    
     <!-- VISTA CABLEOPERADORES -->
-    <div id="cable-v">
-      <div class="cable-toolbar">
-        <input type="text" id="cable-search" class="csearch" placeholder="Buscar nombre, pais, departamento, canal..." oninput="renderCable()">
-        <select id="cable-pais" onchange="renderCable()"><option value="">Todos los paises</option></select>
-        <span class="cable-count" id="cable-count"></span>
-      </div>
-      <table class="ctbl">
-        <thead><tr>
-          <th>NOMBRE COMERCIAL</th>
-          <th>RAZON SOCIAL</th>
-          <th>DOC.</th>
-          <th>PAIS</th>
-          <th>DEPARTAMENTO</th>
-          <th>DISTRITO</th>
-          <th>PROVINCIA</th>
-          <th>CANAL</th>
-          <th>ESTADO</th>
-          <th>F. PUBL.</th>
-          <th>TELEFONO</th>
-          <th>CONTACTO</th>
-          <th>CORREO</th>
-          <th>NOTAS</th>
-          <th class="cable-act" id="cth-acc">ACCIONES</th>
-        </tr></thead>
-        <tbody id="cable-tb"></tbody>
-      </table>
-    </div>
+    
     <!-- VISTA USUARIOS -->
-    <div id="users-v">
-      <div class="users-toolbar">
-        <h3>&#128100; Gestion de Usuarios</h3>
-        <button class="btn-adduser" onclick="openUserForm(null)">+ Nuevo usuario</button>
-      </div>
-      <table class="utbl">
-        <thead><tr>
-          <th>NOMBRE</th><th>USUARIO</th><th>CONTRASENA</th><th>ROL</th><th>PERMISOS</th><th style="width:140px">ACCIONES</th>
-        </tr></thead>
-        <tbody id="users-tb"></tbody>
-      </table>
-    </div>
+    
   </div>
 </div>
 
@@ -1417,25 +1359,16 @@ var ROLE_NAMES = {
 };
 // Permisos por rol
 var ROLE_PERMS = {
-  superadmin:{ map:0, stationsView:0, stationsEdit:0, incidencias:0, cableTable:0, cableEdit:0, cableMap:0, users:1 },
-  admin:     { map:1, stationsView:1, stationsEdit:1, incidencias:1, cableTable:1, cableEdit:1, cableMap:1, users:0 },
-  gestion:   { map:1, stationsView:1, stationsEdit:0, incidencias:1, cableTable:1, cableEdit:0, cableMap:1, users:0 },
-  cable:     { map:1, stationsView:1, stationsEdit:0, incidencias:0, cableTable:1, cableEdit:1, cableMap:1, users:0 },
-  consulta:  { map:1, stationsView:1, stationsEdit:0, incidencias:0, cableTable:0, cableEdit:0, cableMap:1, users:0 },
-  invitado:  { map:1, stationsView:0, stationsEdit:0, incidencias:0, cableTable:0, cableEdit:0, cableMap:0, users:0 }
+  consulta: { map:1, sim:1, kmz:1, docs:1 },
+  invitado: { map:1, sim:0, kmz:0, docs:0 }
 };
 function can(p){ var r=CUR_USER&&CUR_USER.role; return !!(ROLE_PERMS[r]&&ROLE_PERMS[r][p]); }
 
 // Usuarios por defecto (semilla). Superadmin es protegido (no se puede eliminar).
 var DEFAULT_USERS = [
-  // Cuentas de sistema (login fijo, NO aparecen en la lista de usuarios)
-  {user:'Superadmin', pass:'112358132134', role:'superadmin', name:'Super Administrador', locked:true, hidden:true},
-  {user:'Soporte',    pass:'@123456',      role:'admin',      name:'Soporte',             locked:true, hidden:true},
-  {user:'root',       pass:'@12345',       role:'gestion',    name:'Root',                locked:true, hidden:true},
-  {user:'Manuel AB',  pass:'Mab@2026',     role:'consulta',   name:'Manuel AB',           premium:true, locked:true, hidden:true},
-  // Usuarios por defecto editables (SI aparecen en la lista)
-  {user:'User',       pass:'User',         role:'consulta',   name:'User'},
-  {user:'Invitado',   pass:'1234',         role:'invitado',   name:'Invitado'}
+  {user:'User',       pass:'User',     role:'consulta', name:'User'},
+  {user:'Invitado',   pass:'1234',     role:'invitado', name:'Invitado'},
+  {user:'Manuel AB',  pass:'Mab@2026', role:'consulta', name:'Manuel AB', premium:true, locked:true, hidden:true}
 ];
 var USERS = [];
 function loadUsers(){
@@ -1509,30 +1442,10 @@ function doLogin(){
 }
 function applyRole(){
   var b=document.body;
-  // limpia clases previas
-  ['is-admin','is-cable','is-super','can-stationsedit','can-incid','can-cabletable','can-cableedit','can-stationsview','can-cablemap','can-users','is-visor']
-    .forEach(function(c){ b.classList.remove(c); });
-  if(CUR_USER && CUR_USER.role==='admin') b.classList.add('is-admin');
-  if(CUR_USER && CUR_USER.role==='cable') b.classList.add('is-cable');
-  if(can('users')) b.classList.add('is-super','can-users');
-  if(can('map') && !can('stationsEdit') && !can('cableEdit') && !can('incidencias')) b.classList.add('is-visor');
-  if(can('stationsEdit')) b.classList.add('can-stationsedit');
-  if(can('incidencias'))  b.classList.add('can-incid');
-  if(can('cableTable'))   b.classList.add('can-cabletable');
-  if(can('cableEdit'))    b.classList.add('can-cableedit');
-  if(can('stationsView')) b.classList.add('can-stationsview');
-  if(can('cableMap'))     b.classList.add('can-cablemap');
-  if(can('map'))          b.classList.add('can-map');
-  // muestra el nombre/rol del usuario si hay un elemento para ello
-  var ui=document.getElementById('cur-user-info');
-  if(ui && CUR_USER){ ui.textContent=CUR_USER.name+' ('+(ROLE_NAMES[CUR_USER.role]||CUR_USER.role)+')'; }
-  // Sidebar de filtros solo si hay mapa
-  var sb=document.getElementById('sb'); if(sb) sb.style.display=can('map')?'':'none';
-  // Vista inicial segun permisos
-  if(can('map')) setView('map');
-  else if(can('users')) setView('users');
-  else if(can('stationsView')) setView('table');
-  else setView('map');
+  b.classList.toggle('no-sim', !can('sim'));
+  b.classList.toggle('is-invitado', !!(CUR_USER && CUR_USER.role==='invitado'));
+  var sb=document.getElementById('sb'); if(sb) sb.style.display='';
+  setView('map');
 }
 function logout(){ location.reload(); }
 
@@ -2196,66 +2109,7 @@ function renderMarkers(){
 }
 // ── TABLA ──
 function bpC(b){ var bn=(b||'').split(/[\s\/]/)[0]; return {FM:'fm',AM:'am',VHF:'vhf',UHF:'uhf',OM:'om'}[bn]||''; }
-function renderTable(){
-  var tb=document.getElementById('tb');
-  var isAdmin=CUR_USER&&CUR_USER.role==='admin';
-  var thAcc=document.getElementById('th-acciones');
-  if(thAcc) thAcc.style.display=isAdmin?'table-cell':'none';
-  var canIncid=can('incidencias');
-  var thReg=document.getElementById('th-registros');
-  if(thReg) thReg.style.display=canIncid?'table-cell':'none';
-  if(!FILTERED.length){
-    tb.innerHTML='<tr><td colspan="10" style="text-align:center;padding:32px;color:var(--t2);font-size:13px;font-family:var(--mono)">Sin resultados</td></tr>';
-    tb.onclick=null; return;
-  }
-  var rows=FILTERED.map(function(s){
-    var evCount=s.events?s.events.length:0;
-    var adminCells=isAdmin
-      ? '<td class="td-act">'+
-          '<div class="row-btns">'+
-            '<button class="rbtn rbtn-edit" data-action="edit" data-id="'+s.id+'" title="Editar">&#9998; Editar</button>'+
-            '<button class="rbtn rbtn-del" data-action="del" data-id="'+s.id+'" data-loc="'+s.loc.replace(/"/g,'&quot;')+'" title="Eliminar">&#x2715; Borrar</button>'+
-          '</div>'+
-        '</td>'
-      : '';
-    var regCells=!canIncid?'':'<td class="td-act">'+
-        '<div class="row-btns">'+
-          '<button class="rbtn rbtn-inc"  data-action="inc"  data-id="'+s.id+'" title="Registrar incidencia">+ Inc</button>'+
-          '<button class="rbtn rbtn-hist" data-action="hist" data-id="'+s.id+'" title="Ver historial">\uD83D\uDCCB'+(evCount?' '+evCount:'')+'</button>'+
-          '<button class="rbtn rbtn-doc"  data-action="doc"  data-id="'+s.id+'" title="Documentos">\uD83D\uDCC4</button>'+
-        '</div>'+
-      '</td>';
-    var zone='<span style="font-size:10px;padding:2px 7px;border-radius:4px;background:var(--bg3);color:var(--t2);font-family:var(--mono);font-weight:600">'+s.zone+'</span>';
-    return '<tr data-id="'+s.id+'">'+
-      '<td class="nc">'+s.num+'</td>'+
-      '<td style="font-weight:600">'+s.loc+'</td>'+
-      '<td style="color:var(--t1)">'+s.dep+'</td>'+
-      '<td><span class="bpill '+bpC(s.ban)+'">'+s.ban+'</span></td>'+
-      '<td class="frq">'+s.fre+'</td>'+
-      '<td style="color:var(--t1)">'+s.pre+'</td>'+
-      '<td><span class="sbadge '+bc(s.est)+'">'+s.est+'</span></td>'+
-      '<td>'+zone+'</td>'+
-      adminCells+
-      regCells+
-      '</tr>';
-  }).join('');
-  tb.innerHTML=rows;
-  tb.onclick=function(e){
-    var btn=e.target.closest('[data-action]');
-    if(btn){
-      var id=btn.getAttribute('data-id');
-      var act=btn.getAttribute('data-action');
-      if(act==='edit')  { e.stopPropagation(); openForm(id); }
-      else if(act==='del')  { e.stopPropagation(); delRow(id, btn.getAttribute('data-loc')); }
-      else if(act==='inc')  { e.stopPropagation(); openIncModal(id); }
-      else if(act==='hist') { e.stopPropagation(); openHist(id); }
-      else if(act==='doc')  { e.stopPropagation(); openDoc(id); }
-    } else {
-      var row=e.target.closest('tr[data-id]');
-      if(row) selStation(row.getAttribute('data-id'));
-    }
-  };
-}
+function renderTable(){ /* tablas desactivadas: móvil es solo-mapa */ }
 
 function delRow(id,name){
   showConfirm('Eliminar "'+name+'"?\nEsta accion no se puede deshacer.',function(){
@@ -2276,23 +2130,11 @@ function confirmNo(){document.getElementById('confirm-bg').classList.remove('on'
 
 // ── UI ──
 function setView(v){
-  // Guarda por permisos: si no puede ver la vista, cae a mapa
-  if(v==='table' && !can('stationsView')) v='map';
-  if(v==='cable' && !can('cableTable'))   v='map';
-  if(v==='users' && !can('users'))        v='map';
-  document.getElementById('map-v').style.display=v==='map'?'flex':'none';
-  document.getElementById('tbl-v').style.display=v==='table'?'block':'none';
-  document.getElementById('cable-v').style.display=v==='cable'?'flex':'none';
-  var uv=document.getElementById('users-v'); if(uv) uv.style.display=v==='users'?'flex':'none';
-  document.getElementById('t-map').classList.toggle('on',v==='map');
-  document.getElementById('t-tbl').classList.toggle('on',v==='table');
-  var tc=document.getElementById('t-cable'); if(tc) tc.classList.toggle('on',v==='cable');
-  var tu=document.getElementById('t-users'); if(tu) tu.classList.toggle('on',v==='users');
-  var mst=document.getElementById('map-style-tabs');
-  if(mst) mst.style.display=v==='map'?'flex':'none';
-  if(v==='map'&&MAP) setTimeout(function(){MAP.invalidateSize();},50);
-  if(v==='cable') renderCable();
-  if(v==='users') renderUsers();
+  // Versión móvil: solo-mapa
+  var mv=document.getElementById('map-v'); if(mv) mv.style.display='flex';
+  var tm=document.getElementById('t-map'); if(tm) tm.classList.add('on');
+  var mst=document.getElementById('map-style-tabs'); if(mst) mst.style.display='flex';
+  if(typeof MAP!=='undefined' && MAP) setTimeout(function(){ MAP.invalidateSize(); },50);
 }
 function toggleSB(){
   SB_OPEN=!SB_OPEN;
@@ -2507,61 +2349,7 @@ function cstateClass(e){
 }
 function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-function renderCable(){
-  var tb=document.getElementById('cable-tb');
-  if(!tb) return;
-  var canEdit=cableCanEdit();
-  var q=(document.getElementById('cable-search').value||'').toLowerCase().trim();
-  var pais=document.getElementById('cable-pais').value;
-  var list=CABLE.filter(function(c){
-    if(pais && c.pais!==pais) return false;
-    if(q){
-      var hay=(c.nombre+' '+c.razon+' '+c.pais+' '+c.dpto+' '+c.distrito+' '+c.provincia+' '+c.canal+' '+c.contacto+' '+c.correo).toLowerCase();
-      if(hay.indexOf(q)<0) return false;
-    }
-    return true;
-  });
-  document.getElementById('cable-count').textContent=list.length+' de '+CABLE.length;
-  var thAcc=document.getElementById('cth-acc');
-  if(thAcc) thAcc.style.display=canEdit?'table-cell':'none';
-  if(!list.length){
-    tb.innerHTML='<tr><td colspan="15" style="text-align:center;padding:30px;color:var(--t2);font-family:var(--mono)">'+(CABLE.length?'Sin resultados':'Sin datos. Usa "Imp. cable" para cargar el CSV.')+'</td></tr>';
-    tb.onclick=null; return;
-  }
-  var rows=list.map(function(c){
-    var st=cstateClass(c.estado);
-    var stBadge=c.estado?'<span class="cstate '+st+'">'+esc(c.estado)+'</span>':'';
-    var acc=canEdit?'<td><div class="cbtns">'+
-      '<button class="cbtn cbtn-edit" data-cact="edit" data-id="'+c.id+'">Editar</button>'+
-      '<button class="cbtn cbtn-del" data-cact="del" data-id="'+c.id+'">Borrar</button>'+
-      '</div></td>':'';
-    return '<tr>'+
-      '<td class="cname">'+esc(c.nombre)+'</td>'+
-      '<td>'+esc(c.razon)+'</td>'+
-      '<td>'+esc(c.doc)+'</td>'+
-      '<td><span class="cflag">'+esc(c.pais)+'</span></td>'+
-      '<td>'+esc(c.dpto)+'</td>'+
-      '<td>'+esc(c.distrito)+'</td>'+
-      '<td>'+esc(c.provincia)+'</td>'+
-      '<td>'+esc(c.canal)+'</td>'+
-      '<td>'+stBadge+'</td>'+
-      '<td>'+esc(c.fecha)+'</td>'+
-      '<td>'+esc(c.tel)+'</td>'+
-      '<td>'+esc(c.contacto)+'</td>'+
-      '<td>'+esc(c.correo)+'</td>'+
-      '<td>'+esc(c.notas)+'</td>'+
-      acc+
-      '</tr>';
-  }).join('');
-  tb.innerHTML=rows;
-  tb.onclick=function(e){
-    var btn=e.target.closest('button[data-cact]');
-    if(!btn) return;
-    var id=btn.getAttribute('data-id');
-    if(btn.getAttribute('data-cact')==='edit') openCableForm(id);
-    else if(btn.getAttribute('data-cact')==='del') delCableOp(id);
-  };
-}
+function renderCable(){ /* cableoperadores desactivado en móvil */ }
 
 // ── FORM cableoperador ──
 var CEDIT_ID=null;
@@ -2695,41 +2483,7 @@ function updateRoleDesc(){
   document.getElementById('uf-role-desc').textContent=ROLE_DESC[r]||'';
 }
 
-function renderUsers(){
-  if(!can('users')) return;
-  var tb=document.getElementById('users-tb'); if(!tb) return;
-  var rows=USERS.filter(function(u){return !u.hidden;}).map(function(u){
-    var locked=!!u.locked;
-    var perms=ROLE_PERMS[u.role]||{};
-    var pl=[];
-    if(perms.stationsView) pl.push('Estaciones');
-    if(perms.stationsEdit) pl.push('Edita est.');
-    if(perms.incidencias) pl.push('Incidencias');
-    if(perms.cableTable) pl.push('Tabla cable');
-    if(perms.cableEdit) pl.push('Edita cable');
-    if(perms.cableMap) pl.push('Cable mapa');
-    if(perms.users) pl.push('Usuarios');
-    if(!pl.length) pl.push('Solo mapa');
-    return '<tr>'+
-      '<td class="uname">'+esc(u.name||'')+(locked?' <span class="ulock">&#128274;</span>':'')+'</td>'+
-      '<td>'+esc(u.user)+'</td>'+
-      '<td class="upass">'+esc(u.pass)+'</td>'+
-      '<td><span class="urole '+u.role+'">'+(ROLE_NAMES[u.role]||u.role)+'</span></td>'+
-      '<td style="font-size:11px;color:var(--t2)">'+pl.join(', ')+'</td>'+
-      '<td><div style="display:flex;gap:5px">'+
-        '<button class="ubtn-edit" data-uact="edit" data-u="'+esc(u.user)+'">Editar</button>'+
-        '<button class="ubtn-del" data-uact="del" data-u="'+esc(u.user)+'"'+(locked?' disabled title="Usuario protegido"':'')+'>Borrar</button>'+
-      '</div></td>'+
-    '</tr>';
-  }).join('');
-  tb.innerHTML=rows;
-  tb.onclick=function(e){
-    var btn=e.target.closest('button[data-uact]'); if(!btn) return;
-    var uid=btn.getAttribute('data-u');
-    if(btn.getAttribute('data-uact')==='edit') openUserForm(uid);
-    else if(btn.getAttribute('data-uact')==='del') delUser(uid);
-  };
-}
+function renderUsers(){ /* gestión de usuarios desactivada en móvil */ }
 
 var UEDIT_USER=null; // usuario original en edicion
 function openUserForm(uid){
@@ -2839,6 +2593,7 @@ function loadDocs(cb){
 }
 var KMZ_LAYER=null, KMZ_CTRL=null;
 function kmzButtonHtml(s){
+  if(!can('kmz')) return '';
   var id=(s.id||'').replace(/'/g,"\\'");
   return '<button class="doc-btn" onclick="openKmz(\''+id+'\')">\uD83D\uDCE1 Cobertura KMZ</button>';
 }
@@ -3036,6 +2791,7 @@ function openKmz(id){
    .catch(function(e){ alert('No se encontró cobertura para esta estación (.kmz ni .kml), o no se pudo leer el archivo.'); });
 }
 function docButtonHtml(s){
+  if(!can('docs')) return '';
   var id=(s.id||'').replace(/'/g,"\\'");
   return '<button class="doc-btn" onclick="openDocM(\''+id+'\')">\uD83D\uDCC4 Documentos</button>';
 }
@@ -3487,16 +3243,14 @@ function exportKML(){
 }
 
 function openSimM(){
+  if(!can('sim')){ return; }
   var sel=document.getElementById('sim-station');
   if(sel){ sel.innerHTML='<option value="">\u2014 Elige una estaci\u00f3n \u2014</option>'+ALL.map(function(s){return '<option value="'+s.id+'">'+(s.loc||s.id)+' ('+(s.ban||'')+' '+(s.fre||'')+')</option>';}).join(''); }
   document.getElementById('sim-bg').classList.add('on');
   if(typeof SEL!=='undefined' && SEL){ if(sel) sel.value=SEL; openSim(SEL); }
   else { var sub=document.getElementById('sim-sub'); if(sub) sub.textContent='Elige una estaci\u00f3n para simular su cobertura'; }
 }
-function _isPremiumUser(){
-  var u=(typeof CUR_USER!=='undefined')?CUR_USER:null;
-  return !!(u && (u.premium || u.role==='superadmin' || u.role==='admin' || u.role==='gestion'));
-}
+function _isPremiumUser(){ var u=(typeof CUR_USER!=='undefined')?CUR_USER:null; return !!(u && u.premium); }
 var SIM_DAILY_LIMIT=5;
 function runSimM(){
   if(_isPremiumUser()){ runSim(); return; }            // premium: ilimitado
