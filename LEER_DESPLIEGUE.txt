@@ -1,0 +1,25 @@
+PAQUETE PWA - ESTACIONES BETHEL
+================================
+Ruta de destino: https://malvaradob-bethel.github.io/estaciones/
+
+CONTENIDO (subir TODO a la carpeta del repo "estaciones"):
+  index.html            <- la app movil (con PWA activado)
+  manifest.json         <- definicion de la app instalable
+  sw.js                 <- service worker (cache offline)
+  icons/                <- iconos en todos los tamanos
+
+PASOS:
+  1. Sube estos archivos a la raiz del repo (junto a publico.json y docs.json).
+     Manten la carpeta icons/ tal cual.
+  2. Espera 1-2 min a que GitHub Pages publique.
+  3. Abre https://malvaradob-bethel.github.io/estaciones/ en el celular (Chrome/Safari).
+  4. Android (Chrome): aparece "Instalar app" / menu > "Anadir a pantalla de inicio".
+     iPhone (Safari): boton Compartir > "Anadir a pantalla de inicio".
+  5. Se instala con el icono de Estaciones Bethel y abre en pantalla completa.
+
+NOTAS:
+  - Requiere HTTPS (GitHub Pages ya lo es).
+  - Tras una actualizacion, el service worker refresca el contenido al reabrir.
+    Si quieres forzar, cambia en sw.js la version 'estaciones-bethel-v1' a v2.
+  - publico.json, docs.json y los iconos se cachean para uso offline.
+    Los mosaicos del mapa requieren internet la primera vez.
