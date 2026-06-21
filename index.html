@@ -717,6 +717,16 @@ body.no-sim #btn-sim{display:none !important;}
 #topbar #tog:hover, #topbar .about-trigger:hover, #topbar #btn-import:hover, #topbar #btn-sim:hover{
   color:var(--acc); border-color:var(--acc);
 }
+
+#map-style-tabs{ position:relative; }
+.layers-panel{ display:none; position:absolute; top:38px; right:0; background:var(--bg1); border:1px solid var(--line2); border-radius:10px; padding:8px; box-shadow:0 8px 28px rgba(0,0,0,.55); z-index:1450; min-width:180px; }
+.layers-panel.on{ display:block; }
+.lp-title{ font-size:10px; color:var(--t2); text-transform:uppercase; letter-spacing:.5px; margin:2px 6px 8px; }
+.lp-opt{ display:flex; align-items:center; gap:9px; padding:8px 7px; font-size:13px; color:var(--t1); cursor:pointer; border-radius:6px; }
+.lp-opt:hover{ background:var(--bg2); color:var(--t0); }
+.lp-opt input{ accent-color:var(--acc); width:15px; height:15px; }
+
+.zoom-ind{ background:rgba(11,13,18,.82); color:var(--t1); border:1px solid var(--line2); border-radius:6px; padding:3px 9px; font-family:var(--mono); font-size:11px; font-weight:600; box-shadow:0 2px 8px rgba(0,0,0,.4); }
 </style>
 </head>
 <body>
@@ -1051,9 +1061,17 @@ body.no-sim #btn-sim{display:none !important;}
       <div class="topright">
         
         <div class="map-style-tabs" id="map-style-tabs">
-          <button class="map-style-btn on" data-style="dark" onclick="setMapStyle('dark')" title="Vista oscura">&#9681; Oscuro</button>
-          <button class="map-style-btn" data-style="light" onclick="setMapStyle('light')" title="Vista clara">&#9728; Claro</button>
-          <button class="map-style-btn" data-style="sat" onclick="setMapStyle('sat')" title="Satelital al acercar (zoom 13+)">&#x1F6F0; Sat</button>
+          <button class="map-style-btn" id="layers-btn" onclick="toggleLayersPanel(event)" title="Capas del mapa"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px"><path d="M12 2 2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>Capas</button>
+          <div id="layers-panel" class="layers-panel">
+            <div class="lp-title">Capa del mapa</div>
+            <label class="lp-opt"><input class="layer-radio" type="radio" name="bl" value="calles" onchange="setMapStyle('calles')" checked> Calles</label>
+            <label class="lp-opt"><input class="layer-radio" type="radio" name="bl" value="satlabel" onchange="setMapStyle('satlabel')"> Sat\u00e9lite con texto</label>
+            <label class="lp-opt"><input class="layer-radio" type="radio" name="bl" value="sat" onchange="setMapStyle('sat')"> Sat\u00e9lite</label>
+            <label class="lp-opt"><input class="layer-radio" type="radio" name="bl" value="topo" onchange="setMapStyle('topo')"> Topogr\u00e1fico</label>
+            <label class="lp-opt"><input class="layer-radio" type="radio" name="bl" value="relieve" onchange="setMapStyle('relieve')"> Relieve</label>
+            <label class="lp-opt"><input class="layer-radio" type="radio" name="bl" value="dark" onchange="setMapStyle('dark')"> Oscuro</label>
+            <label class="lp-opt"><input class="layer-radio" type="radio" name="bl" value="light" onchange="setMapStyle('light')"> Claro</label>
+          </div>
         </div>
         <div id="conbar">Sistema listo</div>
         
@@ -1094,6 +1112,12 @@ body.no-sim #btn-sim{display:none !important;}
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>/*!
+ Leaflet.TileLayer.Fallback 1.0.4+e36cde9
+ (c) 2015-2018 Boris Seang
+ License Apache-2.0
+ */
+!function(i,e){"function"==typeof define&&define.amd?define(["leaflet"],e):e("object"==typeof module&&module.exports?require("leaflet"):i.L)}(this,function(i){i.TileLayer.Fallback=i.TileLayer.extend({options:{minNativeZoom:0},initialize:function(e,r){i.TileLayer.prototype.initialize.call(this,e,r)},createTile:function(e,r){var t=i.TileLayer.prototype.createTile.call(this,e,r);return t._originalCoords=e,t._originalSrc=t.src,t},_createCurrentCoords:function(i){var e=this._wrapCoords(i);return e.fallback=!0,e},_originalTileOnError:i.TileLayer.prototype._tileOnError,_tileOnError:function(i,e,r){var t,l,o,a=this,n=e._originalCoords,c=e._currentCoords=e._currentCoords||a._createCurrentCoords(n),s=e._fallbackZoom=void 0===e._fallbackZoom?n.z-1:e._fallbackZoom-1,f=e._fallbackScale=2*(e._fallbackScale||1),p=a.getTileSize(),u=e.style;if(s<a.options.minNativeZoom)return this._originalTileOnError(i,e,r);c.z=s,c.x=Math.floor(c.x/2),c.y=Math.floor(c.y/2),t=a.getTileUrl(c),u.width=p.x*f+"px",u.height=p.y*f+"px",l=(n.y-c.y*f)*p.y,u.marginTop=-l+"px",o=(n.x-c.x*f)*p.x,u.marginLeft=-o+"px",u.clip="rect("+l+"px "+(o+p.x)+"px "+(l+p.y)+"px "+o+"px)",a.fire("tilefallback",{tile:e,url:e._originalSrc,urlMissing:e.src,urlFallback:t}),e.src=t},getTileUrl:function(e){var r=e.z=e.fallback?e.z:this._getZoomForUrl(),t={r:i.Browser.retina?"@2x":"",s:this._getSubdomain(e),x:e.x,y:e.y,z:r};if(this._map&&!this._map.options.crs.infinite){var l=this._globalTileRange.max.y-e.y;this.options.tms&&(t.y=l),t["-y"]=l}return i.Util.template(this._url,i.extend(t,this.options))}}),i.tileLayer.fallback=function(e,r){return new i.TileLayer.Fallback(e,r)}});</script>
 <script src="https://unpkg.com/jszip@3.10.1/dist/jszip.min.js"></script>
 <script>
 // ═══════════════════════════════════════════════════════════
@@ -1382,7 +1406,8 @@ var BANDAS = {FM:true,AM:true,VHF:true,UHF:true,OM:true};
 var SEL=null, MAP=null, BASE_LAYER=null, SAT_LAYER=null, MLIST=[];
 var SB_OPEN=true, PENDING=null, CONFIRM_CB=null, EDIT_ID=null, CUR_USER=null;
 var SF_AA=true, SF_FA=true, SF_NI=true; // multi-select state filters
-var MAP_STYLE = 'dark'; // dark | light | sat
+var MAP_STYLE = 'calles';
+var LABEL_LAYER = null;
 
 // ── STORAGE ──
 function saveDB(){
@@ -1880,55 +1905,60 @@ function saveStation(){
 }
 
 // ── MAPA ──
+var ESRI='https://server.arcgisonline.com/ArcGIS/rest/services/';
 var TILES = {
-  dark: {
-    url:  'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-    attr: '&copy; OSM &copy; CARTO',
-    maxZ: 19
-  },
-  light: {
-    url:  'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-    attr: '&copy; OSM &copy; CARTO',
-    maxZ: 19
-  },
-  sat: {
-    url:  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    attr: '&copy; Esri &copy; DigitalGlobe',
-    maxZ: 19,
-    maxNativeZ: 17
-  }
+  calles:   { url:'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', attr:'&copy; OpenStreetMap', maxZ:19 },
+  satlabel: { url:ESRI+'World_Imagery/MapServer/tile/{z}/{y}/{x}', attr:'&copy; Esri', maxZ:19, fb:true,
+              labels:ESRI+'Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}' },
+  sat:      { url:ESRI+'World_Imagery/MapServer/tile/{z}/{y}/{x}', attr:'&copy; Esri &copy; DigitalGlobe', maxZ:19, fb:true },
+  topo:     { url:'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', attr:'&copy; OpenTopoMap (CC-BY-SA)', maxZ:19, maxNativeZ:17 },
+  relieve:  { url:ESRI+'World_Shaded_Relief/MapServer/tile/{z}/{y}/{x}', attr:'&copy; Esri', maxZ:19, maxNativeZ:13 },
+  dark:     { url:'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', attr:'&copy; OSM &copy; CARTO', maxZ:19 },
+  light:    { url:'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', attr:'&copy; OSM &copy; CARTO', maxZ:19 }
 };
 
+var _lastFbZoom = null;
+function updateZoomInd(){
+  var el=document.getElementById('zoom-ind'); if(!el||!MAP) return;
+  var z=MAP.getZoom();
+  el.textContent='z '+z+(_lastFbZoom===z?' \u00b7 escalado':'');
+}
+function _attachFb(layer){ if(layer && layer.on){ layer.on('tilefallback', function(){ _lastFbZoom=MAP.getZoom(); updateZoomInd(); }); } }
+function mkBaseTile(t){
+  if(t.fb && L.tileLayer && L.tileLayer.fallback){
+    return L.tileLayer.fallback(t.url, {attribution:t.attr, maxZoom:t.maxZ, minNativeZoom:2});
+  }
+  return L.tileLayer(t.url, {attribution:t.attr, maxZoom:t.maxZ, maxNativeZoom:t.maxNativeZ||t.maxZ});
+}
 function setMapStyle(style){
   MAP_STYLE = style;
-  // Update button states
-  document.querySelectorAll('.map-style-btn').forEach(function(b){
-    b.classList.toggle('on', b.dataset.style===style);
-  });
+  document.querySelectorAll('.layer-radio').forEach(function(r){ r.checked = (r.value===style); });
   if(!MAP) return;
   if(BASE_LAYER) MAP.removeLayer(BASE_LAYER);
-  var tileKey = style === 'light' ? 'light' : style === 'sat' ? 'sat' : 'dark';
-  var t = TILES[tileKey];
-  BASE_LAYER = L.tileLayer(t.url, {attribution:t.attr, maxZoom:t.maxZ, maxNativeZoom:t.maxNativeZ||t.maxZ});
-  BASE_LAYER.addTo(MAP);
-  BASE_LAYER.bringToBack();
+  if(LABEL_LAYER){ MAP.removeLayer(LABEL_LAYER); LABEL_LAYER=null; }
+  var t = TILES[style] || TILES.calles;
+  BASE_LAYER = mkBaseTile(t);
+  BASE_LAYER.addTo(MAP); BASE_LAYER.bringToBack();
+  if(t.labels){
+    LABEL_LAYER = (t.fb && L.tileLayer.fallback) ? L.tileLayer.fallback(t.labels,{maxZoom:t.maxZ,minNativeZoom:2}) : L.tileLayer(t.labels,{maxZoom:t.maxZ});
+    LABEL_LAYER.addTo(MAP);
+  }
+  _attachFb(BASE_LAYER); if(LABEL_LAYER) _attachFb(LABEL_LAYER);
+  _lastFbZoom=null; updateZoomInd();
 }
 
-function activateSat(){
-  if(MAP_STYLE==='sat'){
-    if(BASE_LAYER) MAP.removeLayer(BASE_LAYER);
-    var t=TILES.sat;
-    BASE_LAYER=L.tileLayer(t.url,{attribution:t.attr,maxZoom:t.maxZ,maxNativeZoom:t.maxNativeZ||t.maxZ});
-    BASE_LAYER.addTo(MAP);
-    BASE_LAYER.bringToBack();
-  }
-}
+function activateSat(){ /* obsoleto: cada capa es completa */ }
 
 function initMap(){
   MAP=L.map('map',{zoomControl:false}).setView([-9.5,-76],5);
   L.control.zoom({position:'topright'}).addTo(MAP);
-  var t=TILES.dark;
-  BASE_LAYER=L.tileLayer(t.url,{attribution:t.attr,maxZoom:t.maxZ,maxNativeZoom:t.maxNativeZ||t.maxZ}).addTo(MAP);
+  var t=TILES.calles;
+  BASE_LAYER=mkBaseTile(t).addTo(MAP);
+  _attachFb(BASE_LAYER);
+  var zi=L.control({position:'bottomleft'});
+  zi.onAdd=function(){ var d=L.DomUtil.create('div','zoom-ind'); d.id='zoom-ind'; d.textContent='z '+MAP.getZoom(); return d; };
+  zi.addTo(MAP);
+  MAP.on('zoomend', updateZoomInd);
   MAP.on('zoomend', renderMarkers);
 }
 
@@ -3390,6 +3420,12 @@ if('serviceWorker' in navigator){
     navigator.serviceWorker.register('sw.js').catch(function(e){ console.warn('SW no registrado:', e); });
   });
 }
+
+function toggleLayersPanel(e){ if(e) e.stopPropagation(); var p=document.getElementById('layers-panel'); if(p) p.classList.toggle('on'); }
+document.addEventListener('click', function(e){
+  var p=document.getElementById('layers-panel'); var b=document.getElementById('layers-btn');
+  if(p && p.classList.contains('on') && !p.contains(e.target) && (!b || !b.contains(e.target))){ p.classList.remove('on'); }
+});
 </script>
 </body>
 </html>
