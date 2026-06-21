@@ -719,8 +719,9 @@ body.no-sim #btn-sim{display:none !important;}
 }
 
 #map-style-tabs{ position:relative; }
-.layers-panel{ display:none; position:absolute; top:38px; right:0; background:var(--bg1); border:1px solid var(--line2); border-radius:10px; padding:8px; box-shadow:0 8px 28px rgba(0,0,0,.55); z-index:1450; min-width:180px; }
+.layers-panel{ display:none; position:absolute; top:38px; left:0; background:var(--bg1); border:1px solid var(--line2); border-radius:10px; padding:8px; box-shadow:0 8px 28px rgba(0,0,0,.55); z-index:1450; min-width:180px; }
 .layers-panel.on{ display:block; }
+#layers-btn{ background:var(--bg1); border:1px solid var(--line2); color:var(--t0); padding:6px 11px; font-size:11px; box-shadow:0 2px 8px rgba(0,0,0,.45); }
 .lp-title{ font-size:10px; color:var(--t2); text-transform:uppercase; letter-spacing:.5px; margin:2px 6px 8px; }
 .lp-opt{ display:flex; align-items:center; gap:9px; padding:8px 7px; font-size:13px; color:var(--t1); cursor:pointer; border-radius:6px; }
 .lp-opt:hover{ background:var(--bg2); color:var(--t0); }
@@ -1065,9 +1066,9 @@ body.no-sim #btn-sim{display:none !important;}
           <div id="layers-panel" class="layers-panel">
             <div class="lp-title">Capa del mapa</div>
             <label class="lp-opt"><input class="layer-radio" type="radio" name="bl" value="calles" onchange="setMapStyle('calles')" checked> Calles</label>
-            <label class="lp-opt"><input class="layer-radio" type="radio" name="bl" value="satlabel" onchange="setMapStyle('satlabel')"> Sat\u00e9lite con texto</label>
-            <label class="lp-opt"><input class="layer-radio" type="radio" name="bl" value="sat" onchange="setMapStyle('sat')"> Sat\u00e9lite</label>
-            <label class="lp-opt"><input class="layer-radio" type="radio" name="bl" value="topo" onchange="setMapStyle('topo')"> Topogr\u00e1fico</label>
+            <label class="lp-opt"><input class="layer-radio" type="radio" name="bl" value="satlabel" onchange="setMapStyle('satlabel')"> Satélite con texto</label>
+            <label class="lp-opt"><input class="layer-radio" type="radio" name="bl" value="sat" onchange="setMapStyle('sat')"> Satélite</label>
+            <label class="lp-opt"><input class="layer-radio" type="radio" name="bl" value="topo" onchange="setMapStyle('topo')"> Topográfico</label>
             <label class="lp-opt"><input class="layer-radio" type="radio" name="bl" value="relieve" onchange="setMapStyle('relieve')"> Relieve</label>
             <label class="lp-opt"><input class="layer-radio" type="radio" name="bl" value="dark" onchange="setMapStyle('dark')"> Oscuro</label>
             <label class="lp-opt"><input class="layer-radio" type="radio" name="bl" value="light" onchange="setMapStyle('light')"> Claro</label>
