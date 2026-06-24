@@ -1672,13 +1672,25 @@ function exportCSV(){
 }
 
 // ── STATS ──
+function statBase(){
+  var sb=document.getElementById('srch');
+  var q=((sb?sb.value:'')||'').toLowerCase().trim();
+  return ALL.filter(function(s){
+    if(ZONE!=='ALL'&&s.zone!==ZONE) return false;
+    var bn=bandKey(s.ban);
+    if(bn&&BANDAS[bn]===false) return false;
+    if(q&&s.loc.toLowerCase().indexOf(q)<0&&s.dep.toLowerCase().indexOf(q)<0&&(s.pre||'').toLowerCase().indexOf(q)<0) return false;
+    return true;
+  });
+}
 function updateStats(){
-  var src=ZONE==='ALL'?ALL:ALL.filter(function(s){return s.zone===ZONE;});
+  var src=statBase();
   var aa=0,fa=0,ni=0;
   src.forEach(function(s){if(s.est==='A.A')aa++;else if(s.est==='F.A')fa++;else ni++;});
-  document.getElementById('c-aa').textContent=aa;
-  document.getElementById('c-fa').textContent=fa;
-  document.getElementById('c-ni').textContent=ni;
+  var e;
+  if(e=document.getElementById('c-aa'))e.textContent=aa;
+  if(e=document.getElementById('c-fa'))e.textContent=fa;
+  if(e=document.getElementById('c-ni'))e.textContent=ni;
 }
 
 // ── FILTROS ──
@@ -1709,19 +1721,13 @@ function bandKey(ban){
   return (b.split(/[\s\/]/)[0]||'');
 }
 function applyF(){
-  var q=(document.getElementById('srch').value||'').toLowerCase().trim();
-  FILTERED=ALL.filter(function(s){
-    if(ZONE!=='ALL'&&s.zone!==ZONE) return false;
-    var bn=bandKey(s.ban);
-    if(bn&&BANDAS[bn]===false) return false;
-    // Multi-select state filter
-    var showAA=SF_AA, showFA=SF_FA, showNI=SF_NI;
-    if(s.est==='A.A' && !showAA) return false;
-    if(s.est==='F.A' && !showFA) return false;
-    if(s.est!=='A.A' && s.est!=='F.A' && !showNI) return false;
-    if(q&&s.loc.toLowerCase().indexOf(q)<0&&s.dep.toLowerCase().indexOf(q)<0&&(s.pre||'').toLowerCase().indexOf(q)<0) return false;
+  FILTERED=statBase().filter(function(s){
+    if(s.est==='A.A' && !SF_AA) return false;
+    if(s.est==='F.A' && !SF_FA) return false;
+    if(s.est!=='A.A' && s.est!=='F.A' && !SF_NI) return false;
     return true;
   });
+  updateStats();
   renderList(); renderMarkers(); renderTable();
 }
 
