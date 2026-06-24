@@ -1699,11 +1699,20 @@ function setSF(f){
   document.getElementById('box-ni').classList.toggle('on',SF_NI);
   applyF();
 }
+function bandKey(ban){
+  var b=(ban||'').toUpperCase();
+  if(b.indexOf('UHF')>=0) return 'UHF';
+  if(b.indexOf('VHF')>=0) return 'VHF';
+  if(b.indexOf('FM')>=0)  return 'FM';
+  if(b.indexOf('OM')>=0)  return 'OM';
+  if(b.indexOf('AM')>=0)  return 'AM';
+  return (b.split(/[\s\/]/)[0]||'');
+}
 function applyF(){
   var q=(document.getElementById('srch').value||'').toLowerCase().trim();
   FILTERED=ALL.filter(function(s){
     if(ZONE!=='ALL'&&s.zone!==ZONE) return false;
-    var bn=(s.ban||'').split(/[\s\/]/)[0];
+    var bn=bandKey(s.ban);
     if(bn&&BANDAS[bn]===false) return false;
     // Multi-select state filter
     var showAA=SF_AA, showFA=SF_FA, showNI=SF_NI;
