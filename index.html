@@ -728,6 +728,13 @@ body.no-sim #btn-sim{display:none !important;}
 .lp-opt input{ accent-color:var(--acc); width:15px; height:15px; }
 
 .zoom-ind{ background:rgba(11,13,18,.82); color:var(--t1); border:1px solid var(--line2); border-radius:6px; padding:3px 9px; font-family:var(--mono); font-size:11px; font-weight:600; box-shadow:0 2px 8px rgba(0,0,0,.4); }
+
+/* iPhone safe-area: empuja los botones bajo la barra de estado (hora/red/batería) */
+#topbar{
+  height:calc(50px + env(safe-area-inset-top));
+  padding:calc(env(safe-area-inset-top) + 8px) calc(env(safe-area-inset-right) + 10px) 8px calc(env(safe-area-inset-left) + 10px);
+}
+.leaflet-bottom{ margin-bottom:env(safe-area-inset-bottom); }
 </style>
 </head>
 <body>
