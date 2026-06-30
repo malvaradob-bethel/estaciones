@@ -735,6 +735,10 @@ body.no-sim #btn-sim{display:none !important;}
   padding:calc(env(safe-area-inset-top) + 8px) calc(env(safe-area-inset-right) + 10px) 8px calc(env(safe-area-inset-left) + 10px);
 }
 .leaflet-bottom{ margin-bottom:env(safe-area-inset-bottom); }
+/* Modo vitrina (visitante): solo mapa con bandas, todo Al Aire */
+body.is-visitante .stats{ display:none; }
+body.is-visitante .leg-fa, body.is-visitante .leg-ni{ display:none; }
+body.is-visitante .freg{ display:none; }
 </style>
 </head>
 <body>
@@ -1095,8 +1099,8 @@ body.no-sim #btn-sim{display:none !important;}
       <div id="map"></div>
       <div id="legend">
         <div class="leg"><div class="ldot" style="background:var(--grn)"></div>Al Aire (A.A)</div>
-        <div class="leg"><div class="ldot" style="background:var(--red)"></div>Fuera del Aire (F.A)</div>
-        <div class="leg"><div class="ldot" style="background:var(--yel)"></div>No Instalada (N.I)</div>
+        <div class="leg leg-fa"><div class="ldot" style="background:var(--red)"></div>Fuera del Aire (F.A)</div>
+        <div class="leg leg-ni"><div class="ldot" style="background:var(--yel)"></div>No Instalada (N.I)</div>
       </div>
     </div>
     
@@ -1375,7 +1379,8 @@ function getZona(dep){
 // Permisos por rol
 var ROLE_PERMS = {
   consulta: { map:1, sim:1, kmz:1, docs:1 },
-  invitado: { map:1, sim:0, kmz:0, docs:0 }
+  invitado: { map:1, sim:0, kmz:0, docs:0 },
+  visitante:{ map:1, sim:0, kmz:0, docs:0 }
 };
 function can(p){ var r=CUR_USER&&CUR_USER.role; return !!(ROLE_PERMS[r]&&ROLE_PERMS[r][p]); }
 
@@ -1383,6 +1388,7 @@ function can(p){ var r=CUR_USER&&CUR_USER.role; return !!(ROLE_PERMS[r]&&ROLE_PE
 var DEFAULT_USERS = [
   {user:'User',       pass:'User',     role:'consulta', name:'User'},
   {user:'Invitado',   pass:'1234',     role:'invitado', name:'Invitado'},
+  {user:'Visitante',  pass:'1234',     role:'visitante', name:'Visitante'},
   {user:'Manuel AB',  pass:'Mab@2026', role:'consulta', name:'Manuel AB', premium:true, locked:true, hidden:true}
 ];
 var USERS = [];
@@ -1395,10 +1401,9 @@ function loadUsers(){
   if(!USERS.length) USERS=JSON.parse(JSON.stringify(DEFAULT_USERS));
   // garantiza que las cuentas de sistema (locked) siempre existan y mantengan sus flags
   DEFAULT_USERS.forEach(function(d){
-    if(!d.locked) return;
     var found=false;
     for(var i=0;i<USERS.length;i++){
-      if(USERS[i].user===d.user){ found=true; USERS[i].locked=true; USERS[i].hidden=true; if(d.premium) USERS[i].premium=true; }
+      if(USERS[i].user===d.user){ found=true; if(d.locked){ USERS[i].locked=true; USERS[i].hidden=true; if(d.premium) USERS[i].premium=true; } }
     }
     if(!found) USERS.push(JSON.parse(JSON.stringify(d)));
   });
@@ -1414,6 +1419,7 @@ var BANDAS = {FM:true,AM:true,VHF:true,UHF:true,OM:true};
 var SEL=null, MAP=null, BASE_LAYER=null, SAT_LAYER=null, MLIST=[];
 var SB_OPEN=true, PENDING=null, CONFIRM_CB=null, EDIT_ID=null, CUR_USER=null;
 var SF_AA=true, SF_FA=true, SF_NI=true; // multi-select state filters
+var SHOWCASE=false; // modo vitrina: todo Al Aire
 var MAP_STYLE = 'calles';
 var LABEL_LAYER = null;
 
@@ -1458,8 +1464,10 @@ function doLogin(){
 }
 function applyRole(){
   var b=document.body;
+  SHOWCASE = !!(CUR_USER && CUR_USER.role==='visitante');
   b.classList.toggle('no-sim', !can('sim'));
   b.classList.toggle('is-invitado', !!(CUR_USER && CUR_USER.role==='invitado'));
+  b.classList.toggle('is-visitante', SHOWCASE);
   var sb=document.getElementById('sb'); if(sb) sb.style.display='';
   setView('map');
 }
@@ -1693,7 +1701,7 @@ function statBase(){
 function updateStats(){
   var src=statBase();
   var aa=0,fa=0,ni=0;
-  src.forEach(function(s){if(s.est==='A.A')aa++;else if(s.est==='F.A')fa++;else ni++;});
+  src.forEach(function(s){var e=estOf(s);if(e==='A.A')aa++;else if(e==='F.A')fa++;else ni++;});
   var e;
   if(e=document.getElementById('c-aa'))e.textContent=aa;
   if(e=document.getElementById('c-fa'))e.textContent=fa;
@@ -1741,6 +1749,7 @@ function applyF(){
 // ── LISTA ──
 function sc(e){ return e==='A.A'?'#2ecc71':e==='F.A'?'#e74c3c':'#f0b429'; }
 function bc(e){ return e==='A.A'?'b-aa':e==='F.A'?'b-fa':'b-ni'; }
+function estOf(s){ return SHOWCASE ? 'A.A' : s.est; }
 function renderList(){
   var el=document.getElementById('stlist');
   if(!FILTERED.length){
@@ -1767,6 +1776,7 @@ var FOTO_EXTS=['jpg','jpeg','JPG','JPEG'];
 var FOTOS_BASE='https://malvaradob-bethel.github.io/fotos-estaciones/';
 var _FICHA_URLS=[];
 function galeriaHtml(s){
+  if(SHOWCASE) return '';
   var id=(s.id||'').replace(/\s+/g,'');
   _FICHA_URLS=[];
   if(!id) return '';
@@ -1810,11 +1820,11 @@ function selStation(id){
   for(var i=0;i<ALL.length;i++){if(ALL[i].id===id){s=ALL[i];break;}}
   if(!s) return;
   renderList();
-  try{var _fe=document.getElementById('ficha');if(_fe)_fe.style.setProperty('border-top','3px solid '+sc(s.est),'important');}catch(e){}
+  try{var _fe=document.getElementById('ficha');if(_fe)_fe.style.setProperty('border-top','3px solid '+sc(estOf(s)),'important');}catch(e){}
   document.getElementById('fn').textContent=s.loc+' - '+s.dep;
   var rows=[
     ['BANDA',s.ban],['FRECUENCIA',s.fre],
-    ['ESTADO','<span class="sbadge '+bc(s.est)+'" style="font-size:12px">'+s.est+'</span>'],
+    ['ESTADO','<span class="sbadge '+bc(estOf(s))+'" style="font-size:12px">'+estOf(s)+'</span>'],
     ['PRESBITERIO',s.pre||'-'],['ZONA',s.zone],['RESPONSABLE',s.res||'-'],
     ['POTENCIA',s.pot||'-'],['ENCARGADO',s.enc||'-'],['NIVEL',s.niv||'-'],['COORDS',s.lat?s.lat.toFixed(5)+', '+s.lng.toFixed(5):'Sin coordenadas']
   ];
@@ -1822,7 +1832,7 @@ function selStation(id){
   // ── Bloque destacado: ULTIMA ACTUALIZACION (columna I del CSV) ──
   var ultText=(s.events&&s.events.length&&s.events[0].text)?s.events[0].text:(s.mot||'');
   var ultDate=(s.events&&s.events.length&&s.events[0].date)?s.events[0].date:'';
-  if(ultText && ultText.trim()){
+  if(ultText && ultText.trim() && !SHOWCASE){
     var ultBlock='<div class="ult-act"><div class="ult-act-h">\uD83D\uDCCC ULTIMA ACTUALIZACION'+(ultDate?(' \u00B7 '+ultDate):'')+'</div><div class="ult-act-t">'+esc(ultText.trim())+'</div></div>';
     fg = ultBlock + fg;
   }
@@ -1855,7 +1865,7 @@ function selStation(id){
       evItems+
     '</div>';
   }
-  fg+=eventsHtml;
+  if(!SHOWCASE) fg+=eventsHtml;
   document.getElementById('fg').innerHTML=fg;
   // Attach delete-incidencia handlers
   document.getElementById('fg').onclick=function(e){
@@ -2138,7 +2148,7 @@ function renderMarkers(){
   pts.forEach(function(s){
     var key=s.lat.toFixed(5)+','+s.lng.toFixed(5);
     var group=grp[key];
-    var m=L.marker([s.lat,s.lng],{icon:mkPt(s.est)});
+    var m=L.marker([s.lat,s.lng],{icon:mkPt(estOf(s))});
     (function(ll, g){ m.on('click',function(){ openStBubbles(g, ll); }); })([s.lat,s.lng], group);
     m.addTo(MAP); MLIST.push(m);
   });
