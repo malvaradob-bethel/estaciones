@@ -383,7 +383,7 @@ html, body { height:100%; font-family:var(--font); background:var(--bg0); color:
             
           
 /* Pill CABLE en mapa */
-#pill-cable { display:none; }       
+#pill-cable { display:inline-flex; align-items:center; }       
 /* Incidencias / registros (ficha) */
 .freg { display:none !important; }
 
@@ -738,7 +738,6 @@ body.no-sim #btn-sim{display:none !important;}
 /* Modo vitrina (visitante): solo mapa con bandas + cable, todo Al Aire */
 body.is-visitante #box-fa, body.is-visitante #box-ni{ display:none; }
 body.is-visitante #box-aa{ pointer-events:none; }
-body.is-visitante #pill-cable{ display:inline-flex; align-items:center; }
 body.is-visitante .leg-fa, body.is-visitante .leg-ni{ display:none; }
 body.is-visitante .freg{ display:none; }
 </style>
