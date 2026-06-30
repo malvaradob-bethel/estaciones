@@ -735,8 +735,10 @@ body.no-sim #btn-sim{display:none !important;}
   padding:calc(env(safe-area-inset-top) + 8px) calc(env(safe-area-inset-right) + 10px) 8px calc(env(safe-area-inset-left) + 10px);
 }
 .leaflet-bottom{ margin-bottom:env(safe-area-inset-bottom); }
-/* Modo vitrina (visitante): solo mapa con bandas, todo Al Aire */
-body.is-visitante .stats{ display:none; }
+/* Modo vitrina (visitante): solo mapa con bandas + cable, todo Al Aire */
+body.is-visitante #box-fa, body.is-visitante #box-ni{ display:none; }
+body.is-visitante #box-aa{ pointer-events:none; }
+body.is-visitante #pill-cable{ display:inline-flex; align-items:center; }
 body.is-visitante .leg-fa, body.is-visitante .leg-ni{ display:none; }
 body.is-visitante .freg{ display:none; }
 </style>
@@ -1468,6 +1470,7 @@ function applyRole(){
   b.classList.toggle('no-sim', !can('sim'));
   b.classList.toggle('is-invitado', !!(CUR_USER && CUR_USER.role==='invitado'));
   b.classList.toggle('is-visitante', SHOWCASE);
+  var lab=document.querySelector('#box-aa .l'); if(lab) lab.textContent=SHOWCASE?'TODAS':'AL AIRE';
   var sb=document.getElementById('sb'); if(sb) sb.style.display='';
   setView('map');
 }
@@ -1759,12 +1762,12 @@ function renderList(){
   }
   var h='';
   FILTERED.forEach(function(s){
-    var c=sc(s.est);
+    var e=estOf(s); var c=sc(e);
     h+='<div class="si'+(SEL===s.id?' on':'')+'" onclick="selStation(\''+s.id+'\')">'+
       '<div class="sdot" style="background:'+c+';box-shadow:0 0 5px '+c+'60"></div>'+
       '<div class="sinfo"><div class="sname">'+s.loc+'</div>'+
       '<div class="smeta">'+s.dep+' &middot; '+s.ban+' '+s.fre+'</div></div>'+
-      '<span class="sbadge '+bc(s.est)+'">'+s.est+'</span></div>';
+      '<span class="sbadge '+bc(e)+'">'+e+'</span></div>';
   });
   el.innerHTML=h;
 }
