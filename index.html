@@ -697,7 +697,8 @@ html, body { height:100%; width:100%; overflow:hidden; position:fixed; top:0; le
 
 #btn-sim{display:inline-flex;align-items:center;justify-content:center;}
 body.no-sim #btn-sim{display:none !important;}
-#sim-station{width:100%;padding:9px;border-radius:8px;background:var(--bg2,#222);border:1px solid var(--line,#333);color:var(--t0,#fff);font-size:14px;}
+#sim-station,#sim-search{width:100%;padding:9px;border-radius:8px;background:var(--bg2,#222);border:1px solid var(--line,#333);color:var(--t0,#fff);font-size:14px;}
+#sim-search{margin-bottom:7px;}
 .prem-bg{display:none;position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,.7);align-items:center;justify-content:center;padding:20px;}
 .prem-bg.on{display:flex;}
 .prem-card{background:var(--bg1,#1a1a1f);border:1px solid var(--line,#333);border-radius:16px;max-width:340px;width:100%;padding:24px 20px;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,.5);}
@@ -1069,7 +1070,7 @@ body.is-visitante .freg{ display:none; }
   <div id="main">
     <div id="topbar">
       <button id="tog" onclick="toggleSB()"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg></button><button class="about-trigger" onclick="openAbout()" title="Acerca de"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="16" x2="12" y2="11"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></button>
-      <button id="btn-import" onclick="openOffSheet()" title="Importar / descargar datos"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button><button id="btn-sim" onclick="openSimM()" title="Simulación de cobertura"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="11" x2="12" y2="21"/><circle cx="12" cy="9" r="1.6" fill="currentColor" stroke="none"/><path d="M8.8 6.2a4.5 4.5 0 0 1 6.4 0"/><path d="M6.4 4a8 8 0 0 1 11.2 0"/></svg></button>
+      <button id="btn-import" onclick="openOffSheet()" title="Importar / descargar datos"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button><button id="btn-sim" onclick="toggleSimM()" title="Simulación de cobertura"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="11" x2="12" y2="21"/><circle cx="12" cy="9" r="1.6" fill="currentColor" stroke="none"/><path d="M8.8 6.2a4.5 4.5 0 0 1 6.4 0"/><path d="M6.4 4a8 8 0 0 1 11.2 0"/></svg></button>
       <div id="net-badge" class="net-badge">⏳ --</div>
       <div class="topright">
         
@@ -2922,6 +2923,12 @@ function openSim(id){
   var sid=id||SEL; if(!sid){ alert('Selecciona una estacion primero.'); return; }
   var s=null; for(var i=0;i<ALL.length;i++){if(ALL[i].id===sid){s=ALL[i];break;}}
   if(!s){ alert('Estacion no encontrada.'); return; }
+  if(SIM_ID===sid && SIM_LAST && SIM_LAST.params){
+    // misma estacion con simulacion previa: conserva ajustes, resultado y botones de descarga
+    document.getElementById('sim-bg').classList.add('on');
+    testElevationAPI(true);
+    return;
+  }
   SIM_ID=sid;
   SIM_FITTED=false;
   document.getElementById('sim-sub').textContent = s.loc+' - '+s.dep+' ('+s.ban+' '+s.fre+')';
@@ -3218,19 +3225,67 @@ function setSimNet(state, msg){
 
 function testElevationAPI(showInModal){
   if(navigator && navigator.onLine===false){ if(showInModal) setSimNet('bad','El navegador reporta sin red'); return; }
-  if(showInModal) setSimNet('chk','Probando API de elevacion...');
-  var done=false;
-  var timer=setTimeout(function(){ if(done) return; done=true; if(showInModal) setSimNet('bad','Sin respuesta (timeout)'); }, 7000);
-  fetch('https://api.open-meteo.com/v1/elevation?latitude=-12.04&longitude=-77.04')
-    .then(function(r){ return r.json(); })
-    .then(function(j){
-      if(done) return; done=true; clearTimeout(timer);
-      if(j && j.elevation){ if(showInModal) setSimNet('ok','API de elevacion OK (Open-Meteo)'); }
-      else { if(showInModal) setSimNet('bad','Respuesta inesperada'); }
-    })
-    .catch(function(){ if(done) return; done=true; clearTimeout(timer); if(showInModal) setSimNet('bad','API no accesible'); });
+  if(showInModal) setSimNet('chk','Probando servidores de elevacion...');
+  var test={a:-1,d:0,lat:-12.04,lng:-77.04};
+  var i=0;
+  function next(){
+    if(i>=ELEV_PROVIDERS.length){ if(showInModal) setSimNet('bad','Ningun servidor de elevacion accesible'); return; }
+    var idx=(ELEV_IDX+i)%ELEV_PROVIDERS.length;
+    ELEV_PROVIDERS[idx].fetchChunk([test]).then(function(vals){
+      if(vals && vals.length){ ELEV_IDX=idx; if(showInModal) setSimNet('ok','Elevacion OK via '+ELEV_PROVIDERS[idx].name); }
+      else { i++; next(); }
+    }).catch(function(){ i++; next(); });
+  }
+  next();
 }
 
+// ===== Servidores de elevacion con failover automatico =====
+var ELEV_IDX=0;
+function _fetchTO(url, opts, ms){
+  return new Promise(function(res,rej){
+    var ctl=(typeof AbortController!=='undefined')?new AbortController():null;
+    var t=setTimeout(function(){ if(ctl) try{ctl.abort();}catch(e){} rej(new Error('timeout')); }, ms||12000);
+    var o=opts||{}; if(ctl) o.signal=ctl.signal;
+    fetch(url,o).then(function(r){ clearTimeout(t); if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); }).then(res)
+      .catch(function(e){ clearTimeout(t); rej(e); });
+  });
+}
+var ELEV_PROVIDERS=[
+  { name:'Open-Meteo', pause:250,
+    fetchChunk:function(chunk){
+      var lats=chunk.map(function(q){return q.lat.toFixed(5);}).join(',');
+      var lngs=chunk.map(function(q){return q.lng.toFixed(5);}).join(',');
+      return _fetchTO('https://api.open-meteo.com/v1/elevation?latitude='+lats+'&longitude='+lngs, null, 12000)
+        .then(function(j){ if(!j||!j.elevation||j.elevation.length!==chunk.length) throw new Error('resp'); return j.elevation; });
+    }},
+  { name:'OpenTopoData SRTM90', pause:1100,
+    fetchChunk:function(chunk){
+      var locs=chunk.map(function(q){return q.lat.toFixed(5)+','+q.lng.toFixed(5);}).join('|');
+      return _fetchTO('https://api.opentopodata.org/v1/srtm90m?locations='+locs, null, 14000)
+        .then(function(j){ if(!j||!j.results||j.results.length!==chunk.length) throw new Error('resp');
+          return j.results.map(function(r){return r.elevation;}); });
+    }},
+  { name:'Open-Elevation', pause:400,
+    fetchChunk:function(chunk){
+      var body=JSON.stringify({locations:chunk.map(function(q){return {latitude:q.lat, longitude:q.lng};})});
+      return _fetchTO('https://api.open-elevation.com/api/v1/lookup',
+        {method:'POST', headers:{'Content-Type':'application/json'}, body:body}, 15000)
+        .then(function(j){ if(!j||!j.results||j.results.length!==chunk.length) throw new Error('resp');
+          return j.results.map(function(r){return r.elevation;}); });
+    }}
+];
+function _elevFetchChunk(chunk){
+  return new Promise(function(resolve,reject){
+    var tries=0;
+    function attempt(){
+      if(tries>=ELEV_PROVIDERS.length){ reject(new Error('ningun servidor de elevacion respondio')); return; }
+      ELEV_PROVIDERS[ELEV_IDX].fetchChunk(chunk).then(resolve).catch(function(){
+        tries++; ELEV_IDX=(ELEV_IDX+1)%ELEV_PROVIDERS.length; attempt();
+      });
+    }
+    attempt();
+  });
+}
 function fetchTerrainProfile(p){
   var radials=[], step=15, ptsPerRadial=12;
   var maxR=Math.min(Math.max(fsFieldRadius(p.erp,p.thr,p.env,0,p.pathN),16), 90); // muestrea al menos 16 km (rango HAAT 3-15) y hasta 90
@@ -3253,23 +3308,15 @@ function fetchTerrainProfile(p){
     var ci=0;
     function doChunk(){
       if(ci>=chunks.length){ resolve(buildProfile()); return; }
-      var chunk=chunks[ci];
-      // Open-Meteo: listas separadas por coma (soporta CORS desde el navegador)
-      var lats=chunk.map(function(q){return q.lat.toFixed(5);}).join(',');
-      var lngs=chunk.map(function(q){return q.lng.toFixed(5);}).join(',');
-      var url='https://api.open-meteo.com/v1/elevation?latitude='+lats+'&longitude='+lngs;
-      fetch(url).then(function(r){ return r.json(); }).then(function(j){
-        if(!j || !j.elevation) throw new Error('respuesta sin datos de elevacion');
+      _elevFetchChunk(chunks[ci]).then(function(vals){
         var base=ci*100;
-        for(var n=0;n<j.elevation.length;n++){
-          elevs[base+n]= j.elevation[n]!=null ? j.elevation[n] : 0;
-        }
+        for(var n=0;n<vals.length;n++){ elevs[base+n]= vals[n]!=null ? vals[n] : 0; }
         ci++;
-        setTimeout(doChunk, 300); // pausa breve entre lotes
+        setTimeout(doChunk, ELEV_PROVIDERS[ELEV_IDX].pause);
       }).catch(function(e){
         var msg=(e&&e.message)?e.message:'error de red';
         if(!navigator.onLine) msg='sin conexion a internet';
-        reject(msg);
+        reject(msg+' - se probaron los '+ELEV_PROVIDERS.length+' servidores');
       });
     }
     function buildProfile(){
@@ -3423,11 +3470,23 @@ function exportPDF(){
     '<h2>Detalle por azimut (cada 15&#176;)</h2>'+
     '<table class="azt"><tr><th>Azimut</th><th>Ganancia patrón (dB)</th><th>Fuerte (km)</th><th>Media (km)</th><th>Borde (km)</th></tr>'+rows+'</table>'+
     '<div class="foot">Modelo simplificado: campo en espacio libre con exponente de propagación n y clutter por entorno; horizonte por altura efectiva (HAAT ITU 3&ndash;15 km) y obstrucción de línea de vista sobre SRTM 90 m. Referencial &mdash; no sustituye un estudio técnico de ingeniería.</div>'+
-    '<scr'+'ipt>setTimeout(function(){try{window.print()}catch(e){}},700)</scr'+'ipt>'+
     '</body></html>';
-  var w=window.open('','_blank');
-  if(!w){ alert('El navegador bloqueó la ventana del informe. Permite ventanas emergentes e intenta de nuevo.'); return; }
-  w.document.open(); w.document.write(html); w.document.close();
+  // Impresion via iframe oculto: funciona dentro de la PWA instalada, sin ventanas emergentes
+  var old=document.getElementById('pdf-frame'); if(old) old.parentNode.removeChild(old);
+  var fr=document.createElement('iframe');
+  fr.id='pdf-frame';
+  fr.style.cssText='position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
+  document.body.appendChild(fr);
+  var doc=fr.contentWindow.document;
+  doc.open(); doc.write(html); doc.close();
+  setTimeout(function(){
+    try{ fr.contentWindow.focus(); fr.contentWindow.print(); }
+    catch(e){
+      var w=window.open('','_blank');
+      if(w){ w.document.open(); w.document.write(html); w.document.close(); }
+      else alert('No se pudo abrir el informe. Permite ventanas emergentes e intenta de nuevo.');
+    }
+  }, 350);
 }
 function exportKML(){
   if(!SIM_LAST){ alert('Primero calcula una cobertura.'); return; }
@@ -3464,6 +3523,21 @@ function exportKML(){
   clog('KML exportado: '+name);
 }
 
+function simFilterStations(q){
+  var ss=document.getElementById('sim-search'); if(ss) ss.value='';
+  var sel=document.getElementById('sim-station'); if(!sel) return;
+  q=(q||'').toLowerCase().trim();
+  var list=ALL.filter(function(s){
+    return !q || (s.loc||'').toLowerCase().indexOf(q)>=0 || (s.dep||'').toLowerCase().indexOf(q)>=0 || (s.ban||'').toLowerCase().indexOf(q)>=0;
+  });
+  sel.innerHTML='<option value="">'+(list.length?('\u2014 '+list.length+' coincidencia'+(list.length===1?'':'s')+' \u2014'):'\u2014 sin coincidencias \u2014')+'</option>'+
+    list.map(function(s){return '<option value="'+s.id+'">'+(s.loc||s.id)+' ('+(s.ban||'')+' '+(s.fre||'')+')</option>';}).join('');
+  if(list.length===1){ sel.value=list[0].id; openSim(list[0].id); }
+}
+function toggleSimM(){
+  var bg=document.getElementById('sim-bg');
+  if(bg && bg.classList.contains('on')) closeSim(); else openSimM();
+}
 function openSimM(){
   if(!can('sim')){ return; }
   var sel=document.getElementById('sim-station');
@@ -3499,6 +3573,7 @@ function closePremium(){ var p=document.getElementById('sim-premium'); if(p) p.c
     <div class="sim-sub" id="sim-sub"></div>
     <div class="sim-field" style="margin:6px 0 2px">
       <label>Estación</label>
+      <input type="text" id="sim-search" placeholder="&#128269; Buscar estación por nombre, departamento o banda..." oninput="simFilterStations(this.value)" autocomplete="off">
       <select id="sim-station" onchange="if(this.value)openSim(this.value)"><option value="">— Elige una estación —</option></select>
     </div>
 
@@ -3591,7 +3666,7 @@ function closePremium(){ var p=document.getElementById('sim-premium'); if(p) p.c
         <label>Modelo de elevacion</label>
         <select id="sim-terrain">
           <option value="none" selected>Tierra lisa (instantaneo, sin internet)</option>
-          <option value="srtm">Copernicus 90m via Open-Meteo (requiere internet)</option>
+          <option value="srtm">Terreno SRTM 90m (auto: Open-Meteo / OpenTopoData / Open-Elevation)</option>
         </select>
         <div class="sim-net-status chk" id="sim-net"><span class="d"></span><span id="sim-net-txt">Verificando conexion...</span><button class="sim-test-btn" onclick="testElevationAPI(true)">Probar</button></div>
       </div>
