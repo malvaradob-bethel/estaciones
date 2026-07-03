@@ -2912,6 +2912,8 @@ var PATRONES = {
 };
 var SIM_REALPAT = null;
 var SIM_ID=null;
+var SIM_FITTED=false;
+var SIM_PANELS=null;
 var SIM_LEGEND=null;
 var SIM_LAYERS=[];
 var SIM_LAST=null;
@@ -2921,6 +2923,7 @@ function openSim(id){
   var s=null; for(var i=0;i<ALL.length;i++){if(ALL[i].id===sid){s=ALL[i];break;}}
   if(!s){ alert('Estacion no encontrada.'); return; }
   SIM_ID=sid;
+  SIM_FITTED=false;
   document.getElementById('sim-sub').textContent = s.loc+' - '+s.dep+' ('+s.ban+' '+s.fre+')';
   document.getElementById('sim-lat').value = s.lat!=null?s.lat:'';
   document.getElementById('sim-lng').value = s.lng!=null?s.lng:'';
@@ -2945,7 +2948,7 @@ function openSim(id){
   // umbral sugerido por banda
   var ban=(s.ban||'').toUpperCase();
   var thr='60';
-  if(ban.indexOf('UHF')>=0) thr='74';
+  if(ban.indexOf('UHF')>=0) thr='51'; // TDT ISDB-T fija exterior (Peru)
   else if(ban.indexOf('VHF')>=0) thr='71';
   else if(ban.indexOf('FM')>=0) thr='60';
   document.getElementById('sim-thr').value = thr;
@@ -2955,6 +2958,7 @@ function openSim(id){
   document.getElementById('sim-result').textContent='';
   document.getElementById('sim-prog').classList.remove('on');
   document.getElementById('sim-kml-btn').disabled=true;
+  var _pb=document.getElementById('sim-pdf-btn'); if(_pb)_pb.disabled=true;
   document.getElementById('sim-bg').classList.add('on');
   // refleja estado de red en el modal
   testElevationAPI(true);
@@ -2963,9 +2967,12 @@ function openSim(id){
 function closeSim(){ document.getElementById('sim-bg').classList.remove('on'); }
 
 function simPatChange(){
-  var dir = document.getElementById('sim-pat').value==='dir';
+  var v = document.getElementById('sim-pat').value;
+  var dir = v==='dir', pan = v==='panel';
   document.getElementById('sim-pat-az-wrap').style.display = dir?'flex':'none';
-  document.getElementById('sim-pat-bw-wrap').style.display = dir?'flex':'none';
+  document.getElementById('sim-pat-azs-wrap').style.display = pan?'flex':'none';
+  document.getElementById('sim-pat-bw-wrap').style.display = (dir||pan)?'flex':'none';
+  if(pan){ var bwEl=document.getElementById('sim-pat-bw'); if(bwEl && (parseFloat(bwEl.value)||0)>=120) bwEl.value='90'; }
 }
 
 function simErpCalc(){
@@ -2997,6 +3004,22 @@ function readSimParams(){
   var bw=parseFloat(document.getElementById('sim-pat-bw').value)||120;
   var terrain=document.getElementById('sim-terrain').value;
   SIM_REALPAT=(pat==='real' && PATRONES[SIM_ID])?PATRONES[SIM_ID].er:null;
+  SIM_PANELS=null;
+  if(pat==='panel'){
+    var azsRaw=(document.getElementById('sim-pat-azs').value||'0');
+    var azs=azsRaw.split(/[;,\s]+/).map(function(x){return parseFloat(x);}).filter(function(x){return !isNaN(x);}).map(function(x){return ((x%360)+360)%360;});
+    if(!azs.length) azs=[0];
+    var norm=0;
+    for(var azq=0;azq<360;azq++){
+      var lin=0;
+      for(var pi=0;pi<azs.length;pi++){
+        var dd=Math.abs(((azq-azs[pi]+540)%360)-180);
+        lin+=Math.pow(10, Math.max(-3*Math.pow(dd/(bw/2),2),-20)/10);
+      }
+      if(lin>norm) norm=lin;
+    }
+    SIM_PANELS={azs:azs, bw:bw, norm:norm||1};
+  }
   return {lat:lat,lng:lng,erp:erp,ptx:ptx,gain:gain,loss:loss,freq:freq,hAnt:hAnt,thr:thr,env:env,pathN:pathN,
           siteAlt:isNaN(siteAlt)?null:siteAlt, pat:pat, az:az, bw:bw, terrain:terrain};
 }
@@ -3041,11 +3064,13 @@ function finishSim(p, terrainProfile){
     'Frecuencia: '+p.freq+' MHz\n'+
     'Altura antena: '+p.hAnt+' m | Umbral: '+p.thr+' dBuV/m\n'+
     'Radio espacio libre: '+rEdge+' km\n'+
-    'Horizonte radioelectrico: '+horizon+' km (limita el alcance real)\n'+
-    'Patron: '+(p.pat==='real'?'Patron real (estudio de antena)':(p.pat==='dir'?('Direccional '+p.az+' grados, haz '+p.bw):'Omnidireccional'))+'\n'+
-    'Terreno: '+(terrainProfile?'SRTM 30m':'Tierra lisa')+'\n'+
+    (bands.haat?('HAAT 3-15 km: prom '+bands.haat.avg.toFixed(0)+' m (min '+bands.haat.min.toFixed(0)+', max '+bands.haat.max.toFixed(0)+')\n'):'')+
+    'Horizonte radioelectrico'+(bands.haat?' efectivo':'')+': '+horizon+' km (limita el alcance real)\n'+
+    'Patron: '+(p.pat==='real'?'Patron real (estudio de antena)':(p.pat==='dir'?('Direccional '+p.az+' grados, haz '+p.bw):(p.pat==='panel'&&SIM_PANELS?('Arreglo de '+SIM_PANELS.azs.length+' paneles @ '+SIM_PANELS.azs.join('/')+' grados, haz '+p.bw):'Omnidireccional')))+'\n'+
+    'Terreno: '+(terrainProfile?'SRTM 90m + HAAT por radial':'Tierra lisa (sin HAAT)')+'\n'+
     'Area aprox. de servicio: '+area.toFixed(0)+' km2';
   document.getElementById('sim-kml-btn').disabled=false;
+  var _pb2=document.getElementById('sim-pdf-btn'); if(_pb2)_pb2.disabled=false;
   // reabrir resultado: mostramos el panel en el modal la proxima vez; aqui solo log
   clog('Cobertura dibujada para la estacion');
 }
@@ -3056,24 +3081,33 @@ function computeBands(p, terrainProfile){
   // Umbrales: borde=thr, medio=thr+12, fuerte=thr+24
   var thrEdge=p.thr, thrMid=p.thr+12, thrStrong=p.thr+24;
   var edge=[], mid=[], strong=[]; var reEdge=0,reMid=0,reStr=0;
+  var rrE=[],rrM=[],rrS=[],gg=[];
   for(var a=0;a<360;a+=2){
     var g = antPatternGain(a, p.pat, p.az, p.bw);
     var rEdge = fsFieldRadius(p.erp, thrEdge, p.env, g, p.pathN);
     var rMid  = fsFieldRadius(p.erp, thrMid,  p.env, g, p.pathN);
     var rStr  = fsFieldRadius(p.erp, thrStrong, p.env, g, p.pathN);
-    // cap por horizonte
+    // cap por horizonte (efectivo con HAAT si hay perfil de terreno)
     var cap = horizon;
-    // si hay perfil de terreno, ajusta el cap segun obstruccion en este azimut
-    if(terrainProfile && terrainProfile[a]!==undefined){
-      cap = Math.min(cap, terrainProfile[a]);
+    if(terrainProfile){
+      var hzA=(terrainProfile.hz&&terrainProfile.hz[a]!==undefined)?terrainProfile.hz[a]:horizon;
+      var losA=(terrainProfile.cap&&terrainProfile.cap[a]!==undefined)?terrainProfile.cap[a]:hzA;
+      cap = Math.min(hzA, losA);
     }
     rEdge=Math.min(rEdge,cap); rMid=Math.min(rMid,cap); rStr=Math.min(rStr,cap);
     if(rEdge>reEdge)reEdge=rEdge; if(rMid>reMid)reMid=rMid; if(rStr>reStr)reStr=rStr;
+    rrE.push(rEdge); rrM.push(rMid); rrS.push(rStr); gg.push(g);
     edge.push(destPoint(p.lat,p.lng,rEdge,a));
     mid.push(destPoint(p.lat,p.lng,rMid,a));
     strong.push(destPoint(p.lat,p.lng,rStr,a));
   }
-  return {edge:edge, mid:mid, strong:strong, horizon:horizon,
+  if(terrainProfile && terrainProfile.hz){
+    var _hs=[]; for(var _k in terrainProfile.hz) _hs.push(terrainProfile.hz[_k]);
+    if(_hs.length) horizon=_hs.reduce(function(s,v){return s+v;},0)/_hs.length;
+  }
+  return {edge:edge, mid:mid, strong:strong, horizon:horizon, lat:p.lat, lng:p.lng,
+          haat:(terrainProfile&&terrainProfile.haat)||null,
+          radii:{e:rrE,m:rrM,s:rrS}, gains:gg,
           rEdgeMax:fsFieldRadius(p.erp,thrEdge,p.env,0,p.pathN),
           thrEdge:thrEdge, thrMid:thrMid, thrStrong:thrStrong, erp:p.erp,
           rEdgeReach:reEdge, rMidReach:reMid, rStrReach:reStr};
@@ -3098,9 +3132,16 @@ function drawBands(bands){
     poly.bindTooltip(meta[i].nom+': '+meta[i].thr+' dB\u00b5V/m \u00b7 hasta ~'+meta[i].km.toFixed(1)+' km', {sticky:true});
     poly.addTo(MAP); SIM_LAYERS.push(poly);
   });
+  // anillo del horizonte radioelectrico (referencia, punteado)
+  var hz=L.circle([bands.lat,bands.lng],{radius:bands.horizon*1000, color:'#7f8ea3', weight:1.5,
+    dashArray:'6 7', fill:false, opacity:0.85});
+  hz.bindTooltip('Horizonte radioel\u00e9ctrico: ~'+bands.horizon.toFixed(1)+' km (l\u00edmite f\u00edsico seg\u00fan altura efectiva)',{sticky:true});
+  hz.addTo(MAP); SIM_LAYERS.push(hz);
   addCovLegend(bands);
-  // ajusta vista
-  try{ MAP.fitBounds(L.polygon(bands.edge).getBounds(), {padding:[30,30]}); }catch(e){}
+  // ajusta vista SOLO la primera vez; luego conserva el zoom para poder comparar potencias
+  if(!SIM_FITTED){
+    try{ MAP.fitBounds(hz.getBounds(), {padding:[30,30]}); SIM_FITTED=true; }catch(e){}
+  }
 }
 
 function antPatternGain(azDeg, type, boresight, bwDeg){
@@ -3108,6 +3149,14 @@ function antPatternGain(azDeg, type, boresight, bwDeg){
     var idx=((Math.round(azDeg)%360)+360)%360;
     var e=SIM_REALPAT[idx]; if(e==null) return 0;
     return 20*Math.log10(Math.max(e,1)/100);
+  }
+  if(type==='panel' && SIM_PANELS){
+    var lin=0;
+    for(var i=0;i<SIM_PANELS.azs.length;i++){
+      var d2=Math.abs(((azDeg-SIM_PANELS.azs[i]+540)%360)-180);
+      lin+=Math.pow(10, Math.max(-3*Math.pow(d2/(SIM_PANELS.bw/2),2),-20)/10);
+    }
+    return 10*Math.log10(Math.max(lin,1e-4)/SIM_PANELS.norm);
   }
   if(type!=='dir') return 0;
   var d = Math.abs(((azDeg - boresight + 540) % 360) - 180); // 0..180 desde boresight
@@ -3140,7 +3189,7 @@ function addCovLegend(bands){
   var lg=L.control({position:'bottomright'});
   lg.onAdd=function(){
     var d=L.DomUtil.create('div','cov-legend');
-    function row(c,nom,thr,km){ return '<div class="cov-lg-row"><span class="cov-lg-sw" style="background:'+c+'"></span><b>'+nom+'</b>&nbsp;'+thr+' dB\u00b5V/m \u00b7 ~'+km.toFixed(1)+' km</div>'; }
+    function row(c,nom,thr,km){ var cap=(km>=bands.horizon-0.05)?' \u00b7 <span style="color:#f0b429">lim. horizonte</span>':''; return '<div class="cov-lg-row"><span class="cov-lg-sw" style="background:'+c+'"></span><b>'+nom+'</b>&nbsp;'+thr+' dB\u00b5V/m \u00b7 ~'+km.toFixed(1)+' km'+cap+'</div>'; }
     d.innerHTML='<div class="cov-lg-h">Cobertura estimada</div>'+
       row('#e74c3c','Fuerte',bands.thrStrong,bands.rStrReach)+
       row('#f0b429','Media', bands.thrMid,   bands.rMidReach)+
@@ -3184,7 +3233,7 @@ function testElevationAPI(showInModal){
 
 function fetchTerrainProfile(p){
   var radials=[], step=15, ptsPerRadial=12;
-  var maxR=Math.min(fsFieldRadius(p.erp,p.thr,p.env,0,p.pathN), radioHorizon(p.hAnt,10), 60);
+  var maxR=Math.min(Math.max(fsFieldRadius(p.erp,p.thr,p.env,0,p.pathN),16), 90); // muestrea al menos 16 km (rango HAAT 3-15) y hasta 90
   // arma lista de puntos: sitio + a lo largo de cada radial
   var queries=[]; // {a, d, lat, lng}
   queries.push({a:-1, d:0, lat:p.lat, lng:p.lng}); // sitio
@@ -3230,31 +3279,156 @@ function fetchTerrainProfile(p){
         p.siteAlt=siteElev;
       }
       var txTop = siteElev + p.hAnt; // altura absoluta del centro de radiacion
-      // para cada radial, busca primera distancia donde el terreno bloquea la LOS
-      var profile={};
+      // por radial: obstruccion LOS + HAAT (promedio de terreno 3-15 km, metodo ITU/FCC)
+      var cap={}, hz={}, hEffArr=[];
       var idx=1;
       for(var a=0;a<360;a+=step){
-        var maxLos=maxR;
+        var maxLos=maxR, sum=0, n=0;
         for(var k=1;k<=ptsPerRadial;k++){
           var d=maxR*k/ptsPerRadial;
           var terr=elevs[idx]||0; idx++;
-          // altura de la linea de vista a distancia d (con curvatura 4/3)
+          if(d>=3 && d<=15){ sum+=terr; n++; }
+          if(maxLos<maxR) continue; // ya hubo obstruccion; sigue solo acumulando HAAT
           var rxTop=terr+10;
-          // correccion de curvatura: c = d^2/(2*k*R), k=4/3, R=6371km -> en metros
           var curv = (d*d)/(2*1.33*6371)*1000;
-          var losAtD = txTop - (txTop-rxTop)*(d/maxR); // linea recta tx->borde
-          // si el terreno + curvatura supera la LOS, hay obstruccion
-          if( (terr+curv) > losAtD + 20 ){ maxLos=d; break; }
+          var losAtD = txTop - (txTop-rxTop)*(d/maxR);
+          if( (terr+curv) > losAtD + 20 ){ maxLos=d; }
         }
-        // asigna a todos los azimut cercanos del paso de 2 grados
-        for(var aa=a; aa<a+step; aa+=2){ profile[aa%360]=maxLos; }
+        var avgTerr = n ? (sum/n) : siteElev;
+        var hEff = Math.max(txTop - avgTerr, 1); // altura efectiva sobre terreno promedio
+        hEffArr.push(hEff);
+        var hzA = 4.12*(Math.sqrt(hEff)+Math.sqrt(10));
+        for(var aa=a; aa<a+step; aa+=2){ cap[aa%360]=maxLos; hz[aa%360]=hzA; }
       }
-      return profile;
+      var mn=Math.min.apply(null,hEffArr), mx=Math.max.apply(null,hEffArr);
+      var av=hEffArr.reduce(function(s,v){return s+v;},0)/hEffArr.length;
+      return {cap:cap, hz:hz, haat:{min:mn, max:mx, avg:av}};
     }
     doChunk();
   });
 }
 
+
+// ===== Informe PDF de la simulación =====
+function _svgPolar(maxV, opts){
+  var R=130, C=160, sz=320;
+  function pt(i, v){
+    var az=(i*2)*Math.PI/180;
+    var r=R*Math.max(v,0)/maxV;
+    return (C+r*Math.sin(az)).toFixed(1)+','+(C-r*Math.cos(az)).toFixed(1);
+  }
+  var s='<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 '+sz+' '+sz+'" xmlns="http://www.w3.org/2000/svg">';
+  for(var k=1;k<=4;k++){
+    s+='<circle cx="'+C+'" cy="'+C+'" r="'+(R*k/4)+'" fill="none" stroke="#ccd3dd" stroke-width="1"/>';
+    s+='<text x="'+(C+4)+'" y="'+(C-R*k/4+11)+'" font-size="9" fill="#8892a3">'+opts.ring(k/4)+'</text>';
+  }
+  s+='<line x1="'+C+'" y1="'+(C-R)+'" x2="'+C+'" y2="'+(C+R)+'" stroke="#e1e5ec"/>';
+  s+='<line x1="'+(C-R)+'" y1="'+C+'" x2="'+(C+R)+'" y2="'+C+'" stroke="#e1e5ec"/>';
+  s+='<text x="'+C+'" y="'+(C-R-6)+'" font-size="10" text-anchor="middle" fill="#555">N (0&#176;)</text>';
+  s+='<text x="'+(C+R+2)+'" y="'+(C+3)+'" font-size="10" fill="#555">90&#176;</text>';
+  for(var si=0; si<opts.series.length; si++){
+    var se=opts.series[si], d='';
+    for(var i=0;i<se.vals.length;i++){ d+=(i?' L':'M ')+pt(i, se.vals[i]); }
+    d+=' Z';
+    s+='<path d="'+d+'" fill="'+se.fill+'" fill-opacity="'+se.op+'" stroke="'+se.color+'" stroke-width="1.4"/>';
+  }
+  s+='</svg>';
+  return s;
+}
+function exportPDF(){
+  if(!SIM_LAST){ alert('Primero calcula una cobertura.'); return; }
+  var b=SIM_LAST.bands, p=SIM_LAST.params;
+  var st=null; for(var i=0;i<ALL.length;i++){ if(ALL[i].id===SIM_ID){ st=ALL[i]; break; } }
+  var fecha=new Date().toLocaleString('es-PE');
+  var patTxt = p.pat==='real'?'Patrón real (estudio)':(p.pat==='dir'?('Direccional '+p.az+'&#176;, haz '+p.bw+'&#176;'):(p.pat==='panel'&&SIM_PANELS?('Arreglo de '+SIM_PANELS.azs.length+' paneles @ '+SIM_PANELS.azs.join('/')+'&#176;, haz '+p.bw+'&#176;'):'Omnidireccional'));
+  var patSvg='';
+  if(b.gains && b.gains.length){
+    var gv=b.gains.map(function(g){ return Math.max(g,-20)+20; });
+    patSvg=_svgPolar(20,{ring:function(f){return (f*20-20).toFixed(0)+' dB';},
+      series:[{vals:gv,color:'#2b6cb0',fill:'#2b6cb0',op:0.15}]});
+  }
+  var covSvg='';
+  if(b.radii && b.radii.e.length){
+    var mx=Math.max.apply(null,b.radii.e)||1;
+    covSvg=_svgPolar(mx,{ring:function(f){return (f*mx).toFixed(0)+' km';},
+      series:[
+        {vals:b.radii.e,color:'#27ae60',fill:'#2ecc71',op:0.18},
+        {vals:b.radii.m,color:'#d69e2e',fill:'#f0b429',op:0.25},
+        {vals:b.radii.s,color:'#c0392b',fill:'#e74c3c',op:0.30}
+      ]});
+  }
+  // área real del contorno de borde: 1/2 · Σ r² · Δθ
+  var area=0;
+  if(b.radii){ for(var ai=0; ai<b.radii.e.length; ai++){ area+=0.5*b.radii.e[ai]*b.radii.e[ai]*(2*Math.PI/180); } }
+  var rows='';
+  for(var az=0; az<360; az+=15){
+    var ix=az/2;
+    rows+='<tr><td>'+az+'&#176;</td><td>'+(b.gains?b.gains[ix].toFixed(1):'0.0')+'</td>'+
+      '<td>'+(b.radii?b.radii.s[ix].toFixed(1):'-')+'</td>'+
+      '<td>'+(b.radii?b.radii.m[ix].toFixed(1):'-')+'</td>'+
+      '<td>'+(b.radii?b.radii.e[ix].toFixed(1):'-')+'</td></tr>';
+  }
+  var haatHtml = b.haat ?
+    '<tr><th>HAAT (3-15 km, ITU)</th><td>prom. '+b.haat.avg.toFixed(0)+' m &middot; mín. '+b.haat.min.toFixed(0)+' m &middot; máx. '+b.haat.max.toFixed(0)+' m</td></tr>' :
+    '<tr><th>HAAT</th><td>no calculado (simulación sin terreno SRTM)</td></tr>';
+  var html='<!DOCTYPE html><html lang="es"><head><meta charset="utf-8">'+
+    '<title>Informe de cobertura - '+(st?st.loc:'')+'</title><style>'+
+    'body{font-family:Segoe UI,Arial,sans-serif;color:#1c2430;margin:28px;font-size:12.5px}'+
+    'h1{font-size:19px;margin:0 0 2px;color:#0a5c36}'+
+    'h2{font-size:13.5px;margin:18px 0 6px;border-bottom:2px solid #0a5c36;padding-bottom:3px}'+
+    '.sub{color:#5a6472;margin-bottom:14px;font-size:11.5px}'+
+    'table{border-collapse:collapse;width:100%;margin:6px 0}'+
+    'th,td{border:1px solid #cdd4dd;padding:4px 8px;text-align:left;vertical-align:top}'+
+    'th{background:#eef2f6;font-weight:600;width:34%}'+
+    '.azt th{width:auto;text-align:center}.azt td{text-align:center}'+
+    '.svgs{display:flex;gap:18px;flex-wrap:wrap;justify-content:space-around;margin:8px 0}'+
+    '.svgbox{text-align:center}.svgbox .cap{font-size:11px;color:#5a6472;margin-top:2px}'+
+    '.pill{display:inline-block;padding:1px 8px;border-radius:8px;font-size:11px;margin-right:6px}'+
+    '.foot{margin-top:16px;font-size:10.5px;color:#78828f;border-top:1px solid #dde2e9;padding-top:6px}'+
+    '.noprint{margin:12px 0}'+
+    '@media print{.noprint{display:none}body{margin:10mm}}'+
+    '</style></head><body>'+
+    '<h1>Informe de simulación de cobertura</h1>'+
+    '<div class="sub">Red Nacional Radio y Televisión &middot; Unidad Técnica &middot; '+fecha+'</div>'+
+    '<div class="noprint"><button onclick="window.print()" style="padding:8px 18px;font-size:13px;cursor:pointer">&#128424; Imprimir / Guardar como PDF</button></div>'+
+    '<h2>Estación</h2><table>'+
+    '<tr><th>Localidad</th><td>'+(st?st.loc+' - '+st.dep:'(manual)')+'</td></tr>'+
+    (st?'<tr><th>Banda / Frecuencia</th><td>'+st.ban+' '+st.fre+'</td></tr>':'')+
+    '<tr><th>Coordenadas</th><td>'+p.lat.toFixed(5)+', '+p.lng.toFixed(5)+(p.siteAlt!=null?' &middot; cota '+Math.round(p.siteAlt)+' m':'')+'</td></tr>'+
+    '</table>'+
+    '<h2>Parámetros de transmisión</h2><table>'+
+    '<tr><th>Potencia TX</th><td>'+p.ptx+' W</td></tr>'+
+    '<tr><th>Ganancia / Pérdidas</th><td>'+p.gain+' dBd / '+p.loss+' dB</td></tr>'+
+    '<tr><th>ERP</th><td>'+Math.round(p.erp)+' W ('+(10*Math.log10(p.erp/1000)).toFixed(1)+' dBkW)</td></tr>'+
+    '<tr><th>Frecuencia</th><td>'+p.freq+' MHz</td></tr>'+
+    '<tr><th>Altura de antena</th><td>'+p.hAnt+' m</td></tr>'+
+    '<tr><th>Patrón</th><td>'+patTxt+'</td></tr>'+
+    '<tr><th>Umbral de servicio</th><td>'+p.thr+' dB&micro;V/m (borde) &middot; '+(p.thr+12)+' (media) &middot; '+(p.thr+24)+' (fuerte)</td></tr>'+
+    '<tr><th>Entorno</th><td>n='+p.pathN+' &middot; clutter '+p.env+' dB</td></tr>'+
+    '<tr><th>Terreno</th><td>'+(b.haat?'SRTM 90 m (Copernicus) + HAAT por radial':'Tierra lisa')+'</td></tr>'+
+    '</table>'+
+    '<h2>Resultados</h2><table>'+
+    haatHtml+
+    '<tr><th>Horizonte radioeléctrico'+(b.haat?' efectivo (prom.)':'')+'</th><td>'+b.horizon.toFixed(1)+' km</td></tr>'+
+    '<tr><th>Alcance máx. por banda</th><td>'+
+      '<span class="pill" style="background:#fdecea;color:#c0392b">Fuerte ('+b.thrStrong+'): '+b.rStrReach.toFixed(1)+' km</span>'+
+      '<span class="pill" style="background:#fdf6e3;color:#b7791f">Media ('+b.thrMid+'): '+b.rMidReach.toFixed(1)+' km</span>'+
+      '<span class="pill" style="background:#e8f8ef;color:#1e8e4e">Borde ('+b.thrEdge+'): '+b.rEdgeReach.toFixed(1)+' km</span></td></tr>'+
+    '<tr><th>Área de servicio (contorno borde)</th><td>'+area.toFixed(0)+' km&sup2;</td></tr>'+
+    '</table>'+
+    '<div class="svgs">'+
+    (patSvg?'<div class="svgbox">'+patSvg+'<div class="cap">Patrón de radiación horizontal (0 dB = máx, anillos cada 5 dB)</div></div>':'')+
+    (covSvg?'<div class="svgbox">'+covSvg+'<div class="cap">Contornos de cobertura por azimut (verde: borde, ámbar: media, rojo: fuerte)</div></div>':'')+
+    '</div>'+
+    '<h2>Detalle por azimut (cada 15&#176;)</h2>'+
+    '<table class="azt"><tr><th>Azimut</th><th>Ganancia patrón (dB)</th><th>Fuerte (km)</th><th>Media (km)</th><th>Borde (km)</th></tr>'+rows+'</table>'+
+    '<div class="foot">Modelo simplificado: campo en espacio libre con exponente de propagación n y clutter por entorno; horizonte por altura efectiva (HAAT ITU 3&ndash;15 km) y obstrucción de línea de vista sobre SRTM 90 m. Referencial &mdash; no sustituye un estudio técnico de ingeniería.</div>'+
+    '<scr'+'ipt>setTimeout(function(){try{window.print()}catch(e){}},700)</scr'+'ipt>'+
+    '</body></html>';
+  var w=window.open('','_blank');
+  if(!w){ alert('El navegador bloqueó la ventana del informe. Permite ventanas emergentes e intenta de nuevo.'); return; }
+  w.document.open(); w.document.write(html); w.document.close();
+}
 function exportKML(){
   if(!SIM_LAST){ alert('Primero calcula una cobertura.'); return; }
   var b=SIM_LAST.bands, p=SIM_LAST.params;
@@ -3374,8 +3548,10 @@ function closePremium(){ var p=document.getElementById('sim-premium'); if(p) p.c
           <option value="48">FM rural (48 dBuV/m)</option>
           <option value="60" selected>FM urbano (60 dBuV/m)</option>
           <option value="66">FM denso (66 dBuV/m)</option>
-          <option value="71">TV VHF (71 dBuV/m)</option>
-          <option value="74">TV UHF / TDT (74 dBuV/m)</option>
+          <option value="71">TV analogica VHF (71 dBuV/m)</option>
+          <option value="74">TV analogica UHF (74 dBuV/m)</option>
+          <option value="51">TDT ISDB-T UHF fija ext. (51 dBuV/m)</option>
+          <option value="70">TDT ISDB-T interior (70 dBuV/m)</option>
         </select>
       </div>
       <div class="sim-field">
@@ -3393,12 +3569,17 @@ function closePremium(){ var p=document.getElementById('sim-premium'); if(p) p.c
         <select id="sim-pat" onchange="simPatChange()">
           <option value="omni" selected>Omnidireccional</option>
           <option value="dir">Direccional</option>
+          <option value="panel">Arreglo de paneles</option>
           <option value="real">Patron real (estudio)</option>
         </select>
       </div>
       <div class="sim-field" id="sim-pat-az-wrap" style="display:none">
         <label>Azimut principal (grados)</label>
         <input type="text" id="sim-pat-az" value="0">
+      </div>
+      <div class="sim-field" id="sim-pat-azs-wrap" style="display:none">
+        <label>Azimuts de paneles <span class="hint">separados por coma</span></label>
+        <input type="text" id="sim-pat-azs" value="0,120,240">
       </div>
       <div class="sim-field" id="sim-pat-bw-wrap" style="display:none">
         <label>Ancho de haz (grados)</label>
@@ -3423,6 +3604,7 @@ function closePremium(){ var p=document.getElementById('sim-premium'); if(p) p.c
       <div class="sim-actions-left">
         <button class="btn-sim" onclick="runSimM()">Calcular y dibujar</button>
         <button class="btn-sim alt" id="sim-kml-btn" onclick="exportKML()" disabled>Exportar KML</button>
+        <button class="btn-sim alt" id="sim-pdf-btn" onclick="exportPDF()" disabled>Informe PDF</button>
         <button class="btn-sim alt" onclick="clearCoverage()">Limpiar mapa</button>
       </div>
       <button class="btn-ghost" onclick="closeSim()">CERRAR</button>
