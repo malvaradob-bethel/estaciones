@@ -1,5 +1,5 @@
 /* Estaciones Bethel - Service Worker (PWA) */
-const CACHE = 'estaciones-bethel-v17';
+const CACHE = 'estaciones-bethel-v18';
 const CORE = [
   './',
   './index.html',
