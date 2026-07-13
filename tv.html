@@ -743,13 +743,19 @@ body.is-visitante .freg{ display:none; }
 /* ===== Adaptación TV (kiosco, horizontal, lectura a distancia) ===== */
 #login-ov{ display:none !important; }
 #app{ display:flex !important; }
-#legend{ bottom:34px; right:26px; padding:16px 22px; border-radius:14px; }
-.leg{ font-size:21px; gap:13px; margin-bottom:11px; }
-.ldot{ width:19px; height:19px; }
-#conbar{ font-size:16px; max-width:none; padding:6px 16px; }
-.leaflet-control-zoom a{ width:46px; height:46px; line-height:46px; font-size:28px; }
-.zoom-ind{ font-size:16px; padding:6px 13px; }
-#topbar{ min-height:60px; }
+#legend{ bottom:26px; right:20px; padding:10px 14px; border-radius:11px; }
+.leg{ font-size:14.5px; gap:9px; margin-bottom:7px; }
+.ldot{ width:13px; height:13px; }
+#conbar{ font-size:13px; max-width:none; padding:5px 13px; }
+.leaflet-control-zoom a{ width:40px; height:40px; line-height:40px; font-size:23px; }
+.zoom-ind{ font-size:13px; padding:5px 11px; }
+#topbar{ min-height:56px; }
+/* Sidebar del dashboard: siempre visible, anclado a la izquierda (no tapa el mapa) */
+#sb{ position:static !important; transform:none !important; width:280px; max-width:none;
+  height:auto; border-right:1px solid var(--line); }
+#sb.off{ position:static !important; transform:none !important; }
+#sb-close{ display:none !important; }
+#tog{ display:none !important; }
 </style>
 </head>
 <body>
@@ -2010,8 +2016,8 @@ function initMap(){
 function mkPt(est){
   var c=sc(est);
   return L.divIcon({
-    html:'<div style="width:20px;height:20px;border-radius:50%;background:'+c+';border:2px solid rgba(255,255,255,.3);box-shadow:0 0 11px '+c+'80"></div>',
-    className:'',iconAnchor:[10,10]
+    html:'<div style="width:15px;height:15px;border-radius:50%;background:'+c+';border:2px solid rgba(255,255,255,.3);box-shadow:0 0 8px '+c+'75"></div>',
+    className:'',iconAnchor:[7,7]
   });
 }
 function mkCluster(cnt,color,lbl){
