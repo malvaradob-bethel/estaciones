@@ -757,6 +757,13 @@ body.is-visitante .freg{ display:none; }
 #sb.off{ position:static !important; transform:none !important; }
 #sb-close{ display:none !important; }
 #tog{ display:none !important; }
+/* Legibilidad del panel en TV */
+.sbox .l{ font-size:12px; letter-spacing:1px; }
+.bpill-f{ font-size:12px; padding:5px 12px; }
+.smeta{ font-size:12.5px; }
+.sname{ font-size:14.5px; }
+#srch{ font-size:13.5px; }
+.ztab{ font-size:12.5px; }
 </style>
 </head>
 <body>
@@ -2017,14 +2024,14 @@ function initMap(){
 function mkPt(est){
   var c=sc(est);
   return L.divIcon({
-    html:'<div style="width:15px;height:15px;border-radius:50%;background:'+c+';border:2px solid rgba(255,255,255,.3);box-shadow:0 0 8px '+c+'75"></div>',
+    html:'<div style="width:15px;height:15px;border-radius:50%;background:'+c+';border:1.5px solid rgba(255,255,255,.35);box-shadow:0 0 3px '+c+'55"></div>',
     className:'',iconAnchor:[7,7]
   });
 }
 function mkCluster(cnt,color,lbl){
-  var sz=Math.min(34+Math.sqrt(cnt)*3,56);
+  var sz=Math.min(30+Math.sqrt(cnt)*2.6,46);
   return L.divIcon({
-    html:'<div style="width:'+sz+'px;height:'+sz+'px;border-radius:50%;background:'+color+'20;border:2px solid '+color+';color:'+color+';display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:Inter,sans-serif;line-height:1.1">'+
+    html:'<div style="width:'+sz+'px;height:'+sz+'px;border-radius:50%;background:'+color+'20;border:1.5px solid '+color+';color:'+color+';display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:Inter,sans-serif;line-height:1.1">'+
       '<span style="font-size:13px;font-weight:700">'+cnt+'</span>'+
       (lbl?'<span style="font-size:8px;opacity:.8;font-weight:600">'+lbl+'</span>':'')+
     '</div>',
