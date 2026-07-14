@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"/>
+<meta name="viewport" content="width=1600"/>
 <title>Estaciones TV - Red Nacional Radio y Televisión</title>
 <meta name="theme-color" content="#0b0d12"/>
 <link rel="manifest" href="manifest.json"/>
@@ -741,6 +741,7 @@ body.is-visitante #box-aa{ pointer-events:none; }
 body.is-visitante .leg-fa, body.is-visitante .leg-ni{ display:none; }
 body.is-visitante .freg{ display:none; }
 /* ===== Adaptación TV (kiosco, horizontal, lectura a distancia) ===== */
+#popup-ov{ display:none !important; }
 #login-ov{ display:none !important; }
 #app{ display:flex !important; }
 #legend{ bottom:26px; right:20px; padding:10px 14px; border-radius:11px; }
@@ -751,7 +752,7 @@ body.is-visitante .freg{ display:none; }
 .zoom-ind{ font-size:13px; padding:5px 11px; }
 #topbar{ min-height:56px; }
 /* Sidebar del dashboard: siempre visible, anclado a la izquierda (no tapa el mapa) */
-#sb{ position:static !important; transform:none !important; width:280px; max-width:none;
+#sb{ position:static !important; transform:none !important; width:260px; max-width:none;
   height:auto; border-right:1px solid var(--line); }
 #sb.off{ position:static !important; transform:none !important; }
 #sb-close{ display:none !important; }
@@ -3475,6 +3476,7 @@ document.addEventListener('click', function(e){
 });
 
 // ===== TV: auto-login como invitado, sin pantalla de acceso =====
+tryPopup=function(){}; // TV: sin popup de inicio
 function tvAutoLogin(){
   var inv=null;
   for(var i=0;i<USERS.length;i++){ if(USERS[i].role==='invitado'){ inv=USERS[i]; break; } }
